@@ -7,7 +7,7 @@
 
 # Introduction
 
-This code set visualizes a configuration of lattice gauge theory with ildg format. This is written in Julia language. This contains configuration generation through [JuliaQCD](https://github.com/JuliaQCD).
+This code set visualizes a configuration in **ILDG** format. This is written in Julia language. This contains configuration generation through [JuliaQCD](https://github.com/JuliaQCD).
 
 The temporal extent is regarded as the *real time* direction. An iso-surface of the plaquette (field strength) are plotted.
 
