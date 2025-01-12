@@ -15,8 +15,6 @@ This code set visualizes a configuration of lattice gauge theory with ildg forma
 
 The temporal extent is regarded as the *real time* direction. An iso-surface of the plaquette (field strength) are plotted.
 
-
-
 # How to use
 
 This uses [Julia](https://julialang.org/downloads/).
@@ -25,14 +23,10 @@ This uses [Julia](https://julialang.org/downloads/).
 Please install all packages in ``install_packages.jl.``
 Please execute julia install_packages.jl'' then they are installed.
 
-
-
 ## Visualization from an existing configuration
 
 1. Set parameters in ``constants.jl`` (size and the name of the configuration)
-
 2. Use ``visualization.jl``
-
    
 
 ## Visualization from an existing configuration
@@ -41,13 +35,10 @@ Please execute julia install_packages.jl'' then they are installed.
 2. Execute configuration_generation.jl (it takes time)
 3. Use ``visualization.jl``
 
-
-
 # Files
 
 ```
 README.md : This file 
-Conf24242432beta6.0.ildg : A sample configuration (SU(3) quenched, Wilson plaquette)
 configuration_generation.jl : Configuration generation with the heatbath algorithm
 constants.jl : constants are defined
 header.jl : packages 
