@@ -61,11 +61,13 @@ function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.
 
     # show logarithm of histogram for plaquettes
     level, isorange, min_val, max_val = automatic_level2(plaqs_t)
-    hist_p = histogram(vec(plaqs_t))
     levels = [collect((level+isorange*1.2):0.05:max_val )...]
-    
+
+    #= To check iso-level, please use here
+    hist_p = histogram(vec(plaqs_t))
     vline!(hist_p, levels)
     display(hist_p)
+    =#
     
     # Set coordinate
     x_physical = (a, a * NX)  
