@@ -50,5 +50,6 @@ visualization.jl : A code for visulalization
 
 - This package is inspired by [very nice visualization of QCD configurations](http://www.physics.adelaide.edu.au/theory/staff/leinweber/VisualQCD/Nobel/) by Derek B. Leinweber.
 - Please mention this code set/video if you use in a presentation or paper.
+- Similar package can be seen in [AnimateLQCD.jl](https://github.com/akio-tomiya/AnimateLQCD.jl).
 - Pease feel free to contribute to this package.
 
