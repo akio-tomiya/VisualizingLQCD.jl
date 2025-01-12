@@ -25,7 +25,7 @@ Please execute julia install_packages.jl'' then they are installed.
 2. Use ``visualization.jl``
    
 
-## Visualization from an existing configuration
+## Visualization from scratch
 
 1. Set parameters in ``constants.jl`` (size and the name of the configuration)
 2. Execute configuration_generation.jl (it takes time)
