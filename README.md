@@ -13,23 +13,24 @@ The temporal extent is regarded as the *real time* direction. An iso-surface of 
 
 # How to use
 
-This uses [Julia](https://julialang.org/downloads/).
+This uses [Julia](https://julialang.org/).
+Please down load it from [here](https://julialang.org/downloads/).
 
 ## Install
-Please install all packages in ``install_packages.jl.``
-Please execute ``julia install_packages.jl`` then they are installed.
+Please install all packages in ``install_packages.jl``.
+Please execute julia install_packages.jl'' then they are installed.
 
 ## Visualization from an existing configuration
 
-1. Set parameters in ``constants.jl`` (size and the name of the configuration)
-2. Use ``julia visualization.jl``
+1. Set parameters in ``constants.jl`` (text file, size and the name of the configuration)
+2. Use ``visualization.jl``
    
 
 ## Visualization from scratch
 
-1. Set parameters in ``constants.jl`` (size and the name of the configuration)
-2. Execute ``julia configuration_generation.jl`` (it takes time)
-3. Use ``julia visualization.jl``
+1. Set parameters in ``constants.jl`` (text file, size and the name of the configuration)
+2. Execute configuration_generation.jl (it takes time)
+3. Use ``visualization.jl``
 
 # Files
 
