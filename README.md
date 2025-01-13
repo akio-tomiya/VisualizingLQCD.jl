@@ -17,19 +17,19 @@ This uses [Julia](https://julialang.org/downloads/).
 
 ## Install
 Please install all packages in ``install_packages.jl.``
-Please execute julia install_packages.jl'' then they are installed.
+Please execute ``julia install_packages.jl`` then they are installed.
 
 ## Visualization from an existing configuration
 
 1. Set parameters in ``constants.jl`` (size and the name of the configuration)
-2. Use ``visualization.jl``
+2. Use ``julia visualization.jl``
    
 
 ## Visualization from scratch
 
 1. Set parameters in ``constants.jl`` (size and the name of the configuration)
-2. Execute configuration_generation.jl (it takes time)
-3. Use ``visualization.jl``
+2. Execute ``julia configuration_generation.jl`` (it takes time)
+3. Use ``julia visualization.jl``
 
 # Files
 
