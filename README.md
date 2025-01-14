@@ -25,7 +25,7 @@ Please execute ``julia install_packages.jl`` then they are installed.
 1. Set parameters in ``constants.jl`` (This is a text file, size and the name of the configuration)
 2. Execute ``julia visualization.jl``
 
-One can use a sample [configuration file](https://www.dropbox.com/scl/fi/ujkmaeszcm33gku7kl67v/Conf24242432beta6.0.ildg?rlkey=4fyzg3krxsy7azlcjgl68nvsm&dl=0).
+One can use a sample [configuration file](https://www.dropbox.com/scl/fi/ujkmaeszcm33gku7kl67v/Conf24242432beta6.0.ildg?rlkey=4fyzg3krxsy7azlcjgl68nvsm&dl=0) (ILDG file).
 
 ## Visualization from scratch
 
