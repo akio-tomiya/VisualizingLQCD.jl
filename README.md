@@ -18,19 +18,20 @@ Please down load it from [here](https://julialang.org/downloads/).
 
 ## Install
 Please install all packages in ``install_packages.jl``.
-Please execute julia install_packages.jl'' then they are installed.
+Please execute ``julia install_packages.jl`` then they are installed.
 
 ## Visualization from an existing configuration
 
-1. Set parameters in ``constants.jl`` (text file, size and the name of the configuration)
-2. Use ``visualization.jl``
-   
+1. Set parameters in ``constants.jl`` (This is a text file, size and the name of the configuration)
+2. Execute ``julia visualization.jl``
+
+One can use a sample [configuration file](https://www.dropbox.com/scl/fi/ujkmaeszcm33gku7kl67v/Conf24242432beta6.0.ildg?rlkey=4fyzg3krxsy7azlcjgl68nvsm&dl=0).
 
 ## Visualization from scratch
 
-1. Set parameters in ``constants.jl`` (text file, size and the name of the configuration)
-2. Execute configuration_generation.jl (it takes time)
-3. Use ``visualization.jl``
+1. Set parameters in ``constants.jl`` (This is a text file, size and the name of the configuration)
+2. Execute ``julia configuration_generation.jl`` (it takes time)
+3. Execute ``julia visualization.jl``
 
 # Files
 
