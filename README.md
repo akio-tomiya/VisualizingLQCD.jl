@@ -5,6 +5,8 @@
 
 <img src="plaquette_3D_contour_animation24242432beta6.0.gif" alt="QCD vacuum" width="400">
 
+[Another example (Youtube)](http://youtube.com/shorts/nscMhDamzfg)
+
 # Introduction
 
 This code set visualizes a configuration in **ILDG** format. This is written in Julia language. This contains configuration generation through [JuliaQCD](https://github.com/JuliaQCD).
