@@ -28,7 +28,7 @@ add https://github.com/akio-tomiya/VisualizingLQCD.jl
 
 ```julia
 using VisualizingLQCD
-function test()
+function main()
     NX = 24
     NY = 24
     NZ = 24
@@ -42,15 +42,18 @@ function test()
     # Execute
     create_animation(NX, NY, NZ, NT, NC, videoname; beta=β, filename=confname)
 end
+main()
 ```
 
 One can use a sample [configuration file](https://www.dropbox.com/scl/fi/ujkmaeszcm33gku7kl67v/Conf24242432beta6.0.ildg?rlkey=4fyzg3krxsy7azlcjgl68nvsm&dl=0) (ILDG file).
 
 ## Visualization from scratch
 
+This takes time because of generation of a gauge configuration.
+
 ```julia
 using VisualizingLQCD
-function test()
+function main()
     NX = 24
     NY = 24
     NZ = 24
@@ -68,6 +71,7 @@ function test()
     # Execute
     create_animation(NX, NY, NZ, NT, NC, videoname; beta=β, filename=confname)
 end
+main()main()
 ```
 
 # Files
