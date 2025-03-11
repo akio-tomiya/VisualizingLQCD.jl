@@ -20,6 +20,17 @@ Wilsonloop = "f3c8d4fe-2f22-401d-8228-e6a01d7a1d02"
 
 [compat]
 julia = "1.10"
+ColorSchemes = "3"
+GLMakie = "0.11"
+Gaugefields="0.5"
+Interpolations = "0.15"
+LaTeXStrings = "1"
+Makie="0.22"
+Plots="1"
+ProgressMeter="1"
+StatsBase="0.34"
+Wilsonloop="0.1.5"
+
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
