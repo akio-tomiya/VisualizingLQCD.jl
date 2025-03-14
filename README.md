@@ -19,10 +19,15 @@ This uses [Julia](https://julialang.org/).
 Please down load it from [here](https://julialang.org/downloads/).
 
 ## Install
-
+In REPL, press ] key. 
 ```
-add https://github.com/akio-tomiya/VisualizingLQCD.jl
+add VisualizingLQCD.jl
 ```
+If there are some problems, it might be better to use 
+```
+activate .
+```
+This means you can use clean environment. 
 
 ## Visualization from an existing configuration
 
