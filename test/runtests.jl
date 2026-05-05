@@ -29,6 +29,9 @@ end
         multiplier=1.0,
         step=0.5,
     ) == [1.5, 2.0]
+    @test VisualizingLQCD.transform_field_neglog([0.0, 1.0]) ≈
+          [VisualizingLQCD.display_transform_neglog(0.0),
+           VisualizingLQCD.display_transform_neglog(1.0)]
     @test VisualizingLQCD.frame_slice_map(4; nloops=1) == [
         Dict("frame" => 1, "slice4" => 1),
         Dict("frame" => 2, "slice4" => 2),

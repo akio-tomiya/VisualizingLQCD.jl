@@ -47,19 +47,10 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     ildg = ILDG(filename)
     load_gaugefield!(U1, 1, ildg, [NX, NY, NZ, NT], NC)
 
-    loop = CURRENT_WILSONLINE_LOOP
-    w = Wilsonline(loop)
-    Uloop = similar(U1[1])
-    temps = [similar(U1[1]) for _ in 1:CURRENT_WILSONLINE_TEMP_COUNT]
-    Gaugefields.evaluate_gaugelinks!(Uloop, w, U1, temps)
-
     # Calculating field strength using plaquette
     # In precise, we need 1/β
-    plaqs_t = zeros(Float64, NX, NY, NZ, NT)
-    for z in 1:NZ, y in 1:NY, x in 1:NX, t in 1:NT
-        tmp = 1 - real(tr(Uloop[:, :, x, y, z, t])) / NC
-        plaqs_t[x, y, z, t] = display_transform_neglog(tmp)
-    end
+    raw_plaqs_t = plaquette_plane_deviation(U1, NX, NY, NZ, NT, NC)
+    plaqs_t = transform_field_neglog(raw_plaqs_t)
 
     # show logarithm of histogram for plaquettes
     level_summary = legacy_level_summary(plaqs_t)
