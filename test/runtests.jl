@@ -22,5 +22,6 @@ end
 
 @testset "VisualizingLQCD.jl" begin
     # Write your tests here.
+    @test [VisualizingLQCD.slice4_for_frame(i, 4) for i in 1:4] == [1, 2, 3, 4]
     test()
 end

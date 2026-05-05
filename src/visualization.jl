@@ -37,6 +37,12 @@ function calculate_a(beta::Float64)::Float64
     return r_0 * exp(ln_a(beta))
 end
 
+function slice4_for_frame(frame::Integer, NT::Integer)::Int
+    frame > 0 || throw(ArgumentError("frame should be positive"))
+    NT > 0 || throw(ArgumentError("NT should be positive"))
+    return (frame - 1) % NT + 1
+end
+
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
@@ -105,7 +111,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     # Make Axis3
     ax = Axis3(fig[1, 1],
         xlabel=myxlabel, ylabel=myylabel, zlabel=myzlabel,
-        title="3D Contour of Plaquette Values",
+        title=DEFAULT_MOVIE_TITLE,
         xticks=(x_positions, x_labels),
         yticks=(y_positions, y_labels),
         zticks=(z_positions, z_labels), aspect=CURRENT_ASPECT)
@@ -121,15 +127,12 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     framerate = CURRENT_MOVIE_FRAMERATE
     t_end = NT * CURRENT_MOVIE_NLOOPS # If you want to loop the video manually, 1 should replaced by some large number.
     record(fig, videoname, 1:t_end; framerate=framerate) do i
-        t = i % NT + 1
+        slice4 = slice4_for_frame(i, NT)
         delete!(ax, plot_obj)
 
-        plaqs = plaqs_t[:, :, :, t]
+        plaqs = plaqs_t[:, :, :, slice4]
 
-        t_phys = (t - 1) * CURRENT_LTOSEC * a
-        t_phys = round(t_phys, digits=3)
-        t_phys = lpad(t_phys, 6, '0')
-        ax.title = "3D contour of field strength at t=$(t_phys) yocto-second"
+        ax.title = DEFAULT_MOVIE_TITLE
 
         plot_obj = GLMakie.contour!(ax, x_physical, y_physical, z_physical, plaqs;
             levels=levels,
