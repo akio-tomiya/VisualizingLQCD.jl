@@ -23,5 +23,11 @@ end
 @testset "VisualizingLQCD.jl" begin
     # Write your tests here.
     @test [VisualizingLQCD.slice4_for_frame(i, 4) for i in 1:4] == [1, 2, 3, 4]
+    @test VisualizingLQCD.frame_slice_map(4; nloops=1) == [
+        Dict("frame" => 1, "slice4" => 1),
+        Dict("frame" => 2, "slice4" => 2),
+        Dict("frame" => 3, "slice4" => 3),
+        Dict("frame" => 4, "slice4" => 4),
+    ]
     test()
 end
