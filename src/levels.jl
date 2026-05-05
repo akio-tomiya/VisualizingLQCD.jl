@@ -21,12 +21,16 @@ function legacy_mean_std_levels(summary;
     return [collect((summary.level + summary.isorange * multiplier):step:summary.max)...]
 end
 
+raw_equivalent_levels_neglog(levels) = [invert_display_level_neglog(level) for level in levels]
+
 function level_selection_metadata(levels, summary)
     return Dict(
         "method" => "mean_std",
         "std_multiplier" => CURRENT_LEVEL_STD_MULTIPLIER,
         "step" => CURRENT_LEVEL_STEP,
         "display_levels" => collect(levels),
+        "raw_equivalent_levels" => raw_equivalent_levels_neglog(levels),
+        "raw_focus_for_upper_levels" => raw_focus_for_upper_display_levels(),
         "summary" => Dict(
             "level" => summary.level,
             "isorange" => summary.isorange,
