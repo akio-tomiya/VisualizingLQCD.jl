@@ -16,6 +16,7 @@ using ColorSchemes
 include("constants.jl")
 include("transforms.jl")
 include("levels.jl")
+include("observables.jl")
 include("metadata.jl")
 include("configuration_generation.jl")
 include("visualization.jl")
