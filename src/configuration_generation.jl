@@ -7,9 +7,9 @@
 #include("constants.jl")
 
 function heatbath_SU3!(U, NC, temps, β)
-    Dim = 4
+    Dim = CURRENT_HEATBATH_DIM
     V = temps[5]
-    ITERATION_MAX = 10^5
+    ITERATION_MAX = CURRENT_HEATBATH_ITERATION_MAX
 
     temps2 = Array{Matrix{ComplexF64},1}(undef, 5)
     temps3 = Array{Matrix{ComplexF64},1}(undef, 5)
@@ -34,10 +34,11 @@ function heatbath_SU3!(U, NC, temps, β)
 end
 
 function heatbathtest_4D(NX, NY, NZ, NT, β, NC, flow_steps_in, confname)
-    Dim = 4
-    Nwing = 0
+    Dim = CURRENT_HEATBATH_DIM
+    Nwing = CURRENT_NWING
 
-    U = Initialize_Gaugefields(NC, Nwing, NX, NY, NZ, NT, condition="cold")
+    U = Initialize_Gaugefields(
+        NC, Nwing, NX, NY, NZ, NT, condition=CURRENT_GENERATION_INITIAL_CONDITION)
 
     temp1 = similar(U[1])
     temp2 = similar(U[1])
@@ -47,18 +48,18 @@ function heatbathtest_4D(NX, NY, NZ, NT, β, NC, flow_steps_in, confname)
     temp4 = similar(U[1])
     temp5 = similar(U[1])
 
-    comb = 6
+    comb = CURRENT_PLAQUETTE_PLANE_COUNT_4D
     factor = 1 / (comb * U[1].NV * U[1].NC)
     @time plaq_t = calculate_Plaquette(U, temp1, temp2) * factor
     println("plaq_t = $plaq_t")
     poly = calculate_Polyakov_loop(U, temp1, temp2)
     println("polyakov loop = $(real(poly)) $(imag(poly))")
 
-    numhb = 20 # numhb-times, Heatbath is applied.
+    numhb = CURRENT_HEATBATH_SWEEPS # numhb-times, Heatbath is applied.
     for itrj = 1:numhb
         heatbath_SU3!(U, NC, [temp1, temp2, temp3, temp4, temp5], β)
 
-        if itrj % 5 == 0
+        if itrj % CURRENT_HEATBATH_REPORT_INTERVAL == 0
             @time plaq_t = calculate_Plaquette(U, temp1, temp2) * factor
             println("$itrj plaq_t = $plaq_t")
             poly = calculate_Polyakov_loop(U, temp1, temp2)
@@ -80,4 +81,3 @@ function heatbathtest_4D(NX, NY, NZ, NT, β, NC, flow_steps_in, confname)
     return plaq_t
 end
 export heatbathtest_4D
-

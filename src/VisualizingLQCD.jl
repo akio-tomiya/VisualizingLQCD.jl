@@ -13,6 +13,7 @@ using StatsBase
 using ProgressMeter
 using ColorSchemes
 
+include("constants.jl")
 include("configuration_generation.jl")
 include("visualization.jl")
 # Write your package code here.
