@@ -17,19 +17,20 @@ end
 
 GLMakie.activate!()
 # set constants
-const LtoSec = 10 / 3
 const myxlabel = L"$x$ [fm]"
 const myylabel = L"$y$ [fm]"
 const myzlabel = L"$z$ [fm]"
-const r_0 = 0.48
+const r_0 = CURRENT_R0_FM
 
 # hep-lat/9806005
 function ln_a(beta::Float64)::Float64
-    if beta < 5.7 || beta > 6.57
-        throw(ArgumentError("Beta should be in the range [5.7, 6.57]"))
+    beta_min, beta_max = CURRENT_BETA_RANGE
+    if beta < beta_min || beta > beta_max
+        throw(ArgumentError("Beta should be in the range [$beta_min, $beta_max]"))
     end
     delta_beta = beta - 6
-    return -1.6805 - 1.7139 * delta_beta + 0.8155 * delta_beta^2 - 0.6667 * delta_beta^3
+    c0, c1, c2, c3 = CURRENT_LN_A_COEFFS
+    return c0 + c1 * delta_beta + c2 * delta_beta^2 + c3 * delta_beta^3
 end
 
 function calculate_a(beta::Float64)::Float64
@@ -37,21 +38,24 @@ function calculate_a(beta::Float64)::Float64
 end
 
 function create_animation(NX, NY, NZ, NT, NC, videoname;
-    beta=6.1, flow_steps_in=200, filename="conf_00000100.ildg")
+    beta=CURRENT_BETA_ANIMATION_DEFAULT,
+    flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
+    filename=CURRENT_FILENAME_DEFAULT)
 
     #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
-    Nwing = 0
+    Nwing = CURRENT_NWING
     a = calculate_a(beta)
     scale_factor = a
 
-    U1 = Initialize_Gaugefields(NC, Nwing, NX, NY, NZ, NT, condition="cold")
+    U1 = Initialize_Gaugefields(
+        NC, Nwing, NX, NY, NZ, NT, condition=CURRENT_GENERATION_INITIAL_CONDITION)
     ildg = ILDG(filename)
     load_gaugefield!(U1, 1, ildg, [NX, NY, NZ, NT], NC)
 
-    loop = [(1, +1), (2, +1), (1, -1), (2, -1)]
+    loop = CURRENT_WILSONLINE_LOOP
     w = Wilsonline(loop)
     Uloop = similar(U1[1])
-    temps = [similar(U1[1]) for _ in 1:10]
+    temps = [similar(U1[1]) for _ in 1:CURRENT_WILSONLINE_TEMP_COUNT]
     Gaugefields.evaluate_gaugelinks!(Uloop, w, U1, temps)
 
     # Calculating field strength using plaquette
@@ -59,12 +63,12 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     plaqs_t = zeros(Float64, NX, NY, NZ, NT)
     for z in 1:NZ, y in 1:NY, x in 1:NX, t in 1:NT
         tmp = 1 - real(tr(Uloop[:, :, x, y, z, t])) / NC
-        plaqs_t[x, y, z, t] = -log(tmp + 0.0000001)
+        plaqs_t[x, y, z, t] = -log(tmp + CURRENT_LOG_EPSILON)
     end
 
     # show logarithm of histogram for plaquettes
     level, isorange, min_val, max_val = automatic_level2(plaqs_t)
-    levels = [collect((level+isorange*1.2):0.05:max_val)...]
+    levels = [collect((level+isorange*CURRENT_LEVEL_STD_MULTIPLIER):CURRENT_LEVEL_STEP:max_val)...]
 
     #= To check iso-level, please use here
     hist_p = histogram(vec(plaqs_t))
@@ -77,24 +81,24 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     y_physical = (a, a * NY)
     z_physical = (a, a * NZ)
 
-    fig = Figure(size=(800, 800))
+    fig = Figure(size=CURRENT_FIGURE_SIZE)
     # label setting.
     x_positions = range(0, stop=a * NX, length=NX)
-    x_labels = [string(round(x, digits=2)) for x in x_positions]
+    x_labels = [string(round(x, digits=CURRENT_TICK_DIGITS)) for x in x_positions]
 
     y_positions = range(0, stop=a * NY, length=NY)
-    y_labels = [string(round(y, digits=2)) for y in y_positions]
+    y_labels = [string(round(y, digits=CURRENT_TICK_DIGITS)) for y in y_positions]
 
     z_positions = range(0, stop=a * NZ, length=NZ)
-    z_labels = [string(round(z, digits=2)) for z in z_positions]
+    z_labels = [string(round(z, digits=CURRENT_TICK_DIGITS)) for z in z_positions]
 
-    for i in 1:2:length(x_labels)
+    for i in 1:CURRENT_TICK_STRIDE:length(x_labels)
         x_labels[i] = ""
     end
-    for i in 1:2:length(y_labels)
+    for i in 1:CURRENT_TICK_STRIDE:length(y_labels)
         y_labels[i] = ""
     end
-    for i in 1:2:length(z_labels)
+    for i in 1:CURRENT_TICK_STRIDE:length(z_labels)
         z_labels[i] = ""
     end
 
@@ -104,37 +108,35 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         title="3D Contour of Plaquette Values",
         xticks=(x_positions, x_labels),
         yticks=(y_positions, y_labels),
-        zticks=(z_positions, z_labels), aspect=(1, 1, 1))
+        zticks=(z_positions, z_labels), aspect=CURRENT_ASPECT)
 
     # Dummy plot 
     dummy_data = zeros(Float64, NX, NY, NZ)
     plot_obj = GLMakie.contour!(ax, x_physical, y_physical, z_physical, dummy_data;
         levels=[levels[1]],
-        colormap=:viridis,
-        transparency=false,
-        alpha=1.0)
+        colormap=CURRENT_COLORMAP,
+        transparency=CURRENT_TRANSPARENCY,
+        alpha=CURRENT_ALPHA)
 
-    framerate = 12
-    t_end = NT * 1 # If you want to loop the video manually, 1 should replaced by some large number.
+    framerate = CURRENT_MOVIE_FRAMERATE
+    t_end = NT * CURRENT_MOVIE_NLOOPS # If you want to loop the video manually, 1 should replaced by some large number.
     record(fig, videoname, 1:t_end; framerate=framerate) do i
         t = i % NT + 1
         delete!(ax, plot_obj)
 
         plaqs = plaqs_t[:, :, :, t]
 
-        t_phys = (t - 1) * LtoSec * a
+        t_phys = (t - 1) * CURRENT_LTOSEC * a
         t_phys = round(t_phys, digits=3)
         t_phys = lpad(t_phys, 6, '0')
         ax.title = "3D contour of field strength at t=$(t_phys) yocto-second"
 
         plot_obj = GLMakie.contour!(ax, x_physical, y_physical, z_physical, plaqs;
             levels=levels,
-            colormap=:viridis,
-            transparency=false,
-            alpha=1.0)
+            colormap=CURRENT_COLORMAP,
+            transparency=CURRENT_TRANSPARENCY,
+            alpha=CURRENT_ALPHA)
     end
 end
 
 export create_animation
-
-
