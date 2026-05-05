@@ -37,16 +37,11 @@ function calculate_a(beta::Float64)::Float64
     return r_0 * exp(ln_a(beta))
 end
 
-function slice4_for_frame(frame::Integer, NT::Integer)::Int
-    frame > 0 || throw(ArgumentError("frame should be positive"))
-    NT > 0 || throw(ArgumentError("NT should be positive"))
-    return (frame - 1) % NT + 1
-end
-
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
-    filename=CURRENT_FILENAME_DEFAULT)
+    filename=CURRENT_FILENAME_DEFAULT,
+    metadata_filename=default_metadata_filename(videoname))
 
     #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
     Nwing = CURRENT_NWING
@@ -75,6 +70,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     # show logarithm of histogram for plaquettes
     level, isorange, min_val, max_val = automatic_level2(plaqs_t)
     levels = [collect((level+isorange*CURRENT_LEVEL_STD_MULTIPLIER):CURRENT_LEVEL_STEP:max_val)...]
+    level_summary = (level=level, isorange=isorange, min=min_val, max=max_val)
 
     #= To check iso-level, please use here
     hist_p = histogram(vec(plaqs_t))
@@ -140,6 +136,23 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
             transparency=CURRENT_TRANSPARENCY,
             alpha=CURRENT_ALPHA)
     end
+
+    metadata = animation_metadata(
+        videoname=videoname,
+        metadata_filename=metadata_filename,
+        filename=filename,
+        lattice_size=(NX, NY, NZ, NT),
+        nc=NC,
+        beta=beta,
+        flow_steps=flow_steps_in,
+        levels=levels,
+        level_summary=level_summary,
+        framerate=framerate,
+        nloops=CURRENT_MOVIE_NLOOPS,
+        title=DEFAULT_MOVIE_TITLE,
+    )
+    write_animation_metadata(metadata_filename, metadata)
+    return (video=videoname, metadata=metadata_filename)
 end
 
 export create_animation
