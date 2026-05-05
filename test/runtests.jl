@@ -23,6 +23,12 @@ end
 @testset "VisualizingLQCD.jl" begin
     # Write your tests here.
     @test [VisualizingLQCD.slice4_for_frame(i, 4) for i in 1:4] == [1, 2, 3, 4]
+    @test VisualizingLQCD.display_transform_neglog(0.0) ≈ -log(VisualizingLQCD.CURRENT_LOG_EPSILON)
+    @test VisualizingLQCD.legacy_mean_std_levels(
+        (level=1.0, isorange=0.5, min=0.0, max=2.0, mode=1.0);
+        multiplier=1.0,
+        step=0.5,
+    ) == [1.5, 2.0]
     @test VisualizingLQCD.frame_slice_map(4; nloops=1) == [
         Dict("frame" => 1, "slice4" => 1),
         Dict("frame" => 2, "slice4" => 2),

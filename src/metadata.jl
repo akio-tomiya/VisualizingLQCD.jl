@@ -46,23 +46,8 @@ function animation_metadata(;
             "kind" => "plaquette_plane",
             "wilsonline_loop" => [collect(step) for step in CURRENT_WILSONLINE_LOOP],
         ),
-        "display_transform" => Dict(
-            "kind" => "neglog",
-            "formula" => "-log(p + epsilon)",
-            "epsilon" => CURRENT_LOG_EPSILON,
-        ),
-        "level_selection" => Dict(
-            "method" => "mean_std",
-            "std_multiplier" => CURRENT_LEVEL_STD_MULTIPLIER,
-            "step" => CURRENT_LEVEL_STEP,
-            "display_levels" => collect(levels),
-            "summary" => Dict(
-                "level" => level_summary.level,
-                "isorange" => level_summary.isorange,
-                "min" => level_summary.min,
-                "max" => level_summary.max,
-            ),
-        ),
+        "display_transform" => display_transform_metadata(),
+        "level_selection" => level_selection_metadata(levels, level_summary),
         "frame_map" => frame_slice_map(lattice_size[4]; nloops=nloops),
         "flow" => Dict("steps" => flow_steps),
         "render" => Dict(

@@ -4,15 +4,9 @@
 # - A. Tomiya 2025/01/11
 
 function automatic_level2(plaqs_t)
-    min_val = minimum(plaqs_t)
-    max_val = maximum(plaqs_t)
-    mean_val = mean(plaqs_t)
-    mode_val = mode(plaqs_t)
-    println("mean=$mean_val, mode=$mode_val, min=$min_val, max=$max_val")
-    level = mean_val
-    isorange = std(plaqs_t)
-    println("$level $isorange")
-    return level, isorange, min_val, max_val
+    summary = legacy_level_summary(plaqs_t)
+    print_legacy_level_summary(summary)
+    return summary.level, summary.isorange, summary.min, summary.max
 end
 
 GLMakie.activate!()
@@ -64,13 +58,13 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     plaqs_t = zeros(Float64, NX, NY, NZ, NT)
     for z in 1:NZ, y in 1:NY, x in 1:NX, t in 1:NT
         tmp = 1 - real(tr(Uloop[:, :, x, y, z, t])) / NC
-        plaqs_t[x, y, z, t] = -log(tmp + CURRENT_LOG_EPSILON)
+        plaqs_t[x, y, z, t] = display_transform_neglog(tmp)
     end
 
     # show logarithm of histogram for plaquettes
-    level, isorange, min_val, max_val = automatic_level2(plaqs_t)
-    levels = [collect((level+isorange*CURRENT_LEVEL_STD_MULTIPLIER):CURRENT_LEVEL_STEP:max_val)...]
-    level_summary = (level=level, isorange=isorange, min=min_val, max=max_val)
+    level_summary = legacy_level_summary(plaqs_t)
+    print_legacy_level_summary(level_summary)
+    levels = legacy_mean_std_levels(level_summary)
 
     #= To check iso-level, please use here
     hist_p = histogram(vec(plaqs_t))
