@@ -1,0 +1,63 @@
+# Reference values copied from the current VisualizingLQCD.jl main branch
+# as inspected on 2026-05-04. These constants are not prescriptions for new
+# physics defaults; they are anchors for compatibility tests, metadata, and
+# old-vs-new visualization comparisons.
+
+const CURRENT_LOG_EPSILON = 1e-7
+const CURRENT_TRANSFORM_KIND = :neglog
+const CURRENT_LEVEL_METHOD = :mean_std
+const CURRENT_LEVEL_STD_MULTIPLIER = 1.2
+const CURRENT_LEVEL_STEP = 0.05
+
+const CURRENT_MOVIE_FRAMERATE = 12
+const CURRENT_MOVIE_NLOOPS = 1
+const CURRENT_FIGURE_SIZE = (800, 800)
+const CURRENT_COLORMAP = :viridis
+const CURRENT_ALPHA = 1.0
+const CURRENT_TRANSPARENCY = false
+const CURRENT_ASPECT = (1, 1, 1)
+const CURRENT_TICK_DIGITS = 2
+const CURRENT_TICK_STRIDE = 2
+
+const CURRENT_BETA_ANIMATION_DEFAULT = 6.1
+const CURRENT_FILENAME_DEFAULT = "conf_00000100.ildg"
+const CURRENT_FLOW_STEPS_ANIMATION_DEFAULT = 200  # currently not used inside create_animation
+const CURRENT_NWING = 0
+const CURRENT_R0_FM = 0.48
+const CURRENT_BETA_RANGE = (5.7, 6.57)
+const CURRENT_LN_A_COEFFS = (-1.6805, -1.7139, 0.8155, -0.6667)
+const CURRENT_LTOSEC = 10 / 3  # legacy screen-time conversion, not for the new default UI
+
+const CURRENT_PLAQUETTE_PLANE = (1, 2)
+const CURRENT_WILSONLINE_LOOP = ((1, +1), (2, +1), (1, -1), (2, -1))
+const CURRENT_WILSONLINE_TEMP_COUNT = 10
+
+const CURRENT_HEATBATH_DIM = 4
+const CURRENT_HEATBATH_ITERATION_MAX = 100_000
+const CURRENT_HEATBATH_SWEEPS = 20
+const CURRENT_HEATBATH_REPORT_INTERVAL = 5
+const CURRENT_FLOW_STEP_SIZE = 0.01
+const CURRENT_GENERATION_INITIAL_CONDITION = "cold"
+const CURRENT_PLAQUETTE_PLANE_COUNT_4D = 6
+
+const CURRENT_README_LATTICE = (24, 24, 24, 32)
+const CURRENT_README_BETA = 6.0
+const CURRENT_README_NC = 3
+const CURRENT_README_FLOW_STEPS = 200
+
+const CURRENT_TEST_LATTICE = (12, 12, 12, 16)
+const CURRENT_TEST_BETA = 6.0
+const CURRENT_TEST_NC = 3
+const CURRENT_TEST_FLOW_STEPS = 10
+
+struct LegacyVisualDefaults end
+
+legacy_transform_spec(::LegacyVisualDefaults=LegacyVisualDefaults()) =
+    TransformSpec(CURRENT_TRANSFORM_KIND, CURRENT_LOG_EPSILON, :fixed, (0.0, 1.0))
+
+legacy_level_spec(::LegacyVisualDefaults=LegacyVisualDefaults()) =
+    LevelSpec(CURRENT_LEVEL_METHOD, Float64[], Float64[], :upper, true)
+
+legacy_render_spec(output::AbstractString="qcd_vacuum.mp4") =
+    RenderSpec(:glmakie, String(output), CURRENT_MOVIE_FRAMERATE, false,
+               "Plaquette log iso-surface")
