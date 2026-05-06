@@ -4,6 +4,7 @@ display_transform_kind() = :neglog
 display_transform_formula() = "-log(p + epsilon)"
 display_transform_inverse_formula() = "exp(-level) - epsilon"
 raw_focus_for_upper_display_levels() = "low_raw_deviation"
+raw_high_focus_for_upper_levels() = "high_raw_deviation"
 
 function display_transform_neglog(p::Real; epsilon::Real=CURRENT_LOG_EPSILON)
     return -log(p + epsilon)
@@ -20,5 +21,15 @@ function display_transform_metadata()
         "inverse_formula" => display_transform_inverse_formula(),
         "epsilon" => CURRENT_LOG_EPSILON,
         "raw_focus_for_upper_levels" => raw_focus_for_upper_display_levels(),
+    )
+end
+
+function raw_display_transform_metadata()
+    return Dict(
+        "kind" => "identity",
+        "formula" => "p",
+        "inverse_formula" => "level",
+        "epsilon" => 0.0,
+        "raw_focus_for_upper_levels" => raw_high_focus_for_upper_levels(),
     )
 end
