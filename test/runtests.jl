@@ -38,10 +38,19 @@ end
            exp(-2.0) - VisualizingLQCD.CURRENT_LOG_EPSILON]
     @test VisualizingLQCD.raw_high_quantile_levels([1.0, 4.0, 2.0, 3.0]; quantiles=(0.0, 1.0)) ==
           [1.0, 4.0]
+    @test VisualizingLQCD.raw_high_color_range([1.0, 4.0, 2.0, 3.0]; quantiles=(0.0, 1.0)) ==
+          (1.0, 4.0)
     raw_setup = VisualizingLQCD.plaquette_display_level_setup(
-        [1.0, 4.0, 2.0, 3.0]; level_target=VisualizingLQCD.LEVEL_TARGET_RAW_HIGH)
+        [1.0, 4.0, 2.0, 3.0];
+        level_target=VisualizingLQCD.LEVEL_TARGET_RAW_HIGH,
+        raw_high_level_quantiles=(0.0, 1.0),
+        raw_high_color_quantiles=(0.0, 1.0))
     @test raw_setup.display_transform_info["kind"] == "identity"
     @test raw_setup.level_selection_info["raw_focus_for_upper_levels"] == "high_raw_deviation"
+    @test raw_setup.render_style_info["color_range"] == [1.0, 4.0]
+    @test raw_setup.contour_style.alpha == VisualizingLQCD.CURRENT_RAW_HIGH_ALPHA
+    @test VisualizingLQCD.render_theme_metadata(
+        VisualizingLQCD.RENDER_THEME_DARK)["render_theme"] == "dark"
     @test VisualizingLQCD.transform_field_neglog([0.0, 1.0]) ≈
           [VisualizingLQCD.display_transform_neglog(0.0),
            VisualizingLQCD.display_transform_neglog(1.0)]

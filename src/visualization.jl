@@ -31,29 +31,40 @@ function calculate_a(beta::Float64)::Float64
     return r_0 * exp(ln_a(beta))
 end
 
-function plaquette_display_level_setup(raw_plaqs_t; level_target::Symbol=CURRENT_LEVEL_TARGET)
+function plaquette_display_level_setup(raw_plaqs_t;
+    level_target::Symbol=CURRENT_LEVEL_TARGET,
+    raw_high_level_quantiles=CURRENT_RAW_HIGH_QUANTILES,
+    raw_high_color_quantiles=CURRENT_RAW_HIGH_COLOR_QUANTILES)
     if level_target == LEVEL_TARGET_LEGACY_NEGLOG_HIGH
         display_field = transform_field_neglog(raw_plaqs_t)
         level_summary = legacy_level_summary(display_field)
         levels = legacy_mean_std_levels(level_summary)
+        contour_style = legacy_contour_style()
         return (
             display_field=display_field,
             level_summary=level_summary,
             levels=levels,
             display_transform_info=display_transform_metadata(),
             level_selection_info=level_selection_metadata(levels, level_summary),
+            contour_style=contour_style,
+            render_style_info=contour_style.metadata,
             title=DEFAULT_MOVIE_TITLE,
         )
     elseif level_target == LEVEL_TARGET_RAW_HIGH
         display_field = copy(raw_plaqs_t)
         level_summary = legacy_level_summary(display_field)
-        levels = raw_high_quantile_levels(display_field)
+        levels = raw_high_quantile_levels(display_field; quantiles=raw_high_level_quantiles)
+        contour_style = raw_high_contour_style(
+            display_field; color_quantiles=raw_high_color_quantiles)
         return (
             display_field=display_field,
             level_summary=level_summary,
             levels=levels,
             display_transform_info=raw_display_transform_metadata(),
-            level_selection_info=raw_high_level_selection_metadata(levels, level_summary),
+            level_selection_info=raw_high_level_selection_metadata(
+                levels, level_summary; quantiles=raw_high_level_quantiles),
+            contour_style=contour_style,
+            render_style_info=contour_style.metadata,
             title=RAW_HIGH_MOVIE_TITLE,
         )
     else
@@ -66,7 +77,10 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
     filename=CURRENT_FILENAME_DEFAULT,
     metadata_filename=default_metadata_filename(videoname),
-    level_target=CURRENT_LEVEL_TARGET)
+    level_target=CURRENT_LEVEL_TARGET,
+    raw_high_level_quantiles=CURRENT_RAW_HIGH_QUANTILES,
+    raw_high_color_quantiles=CURRENT_RAW_HIGH_COLOR_QUANTILES,
+    render_theme=CURRENT_RENDER_THEME)
 
     #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
     Nwing = CURRENT_NWING
@@ -81,8 +95,12 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     # Calculating field strength using plaquette
     # In precise, we need 1/β
     raw_plaqs_t = plaquette_plane_deviation(U1, NX, NY, NZ, NT, NC)
-    display_setup = plaquette_display_level_setup(raw_plaqs_t; level_target=level_target)
+    display_setup = plaquette_display_level_setup(raw_plaqs_t;
+        level_target=level_target,
+        raw_high_level_quantiles=raw_high_level_quantiles,
+        raw_high_color_quantiles=raw_high_color_quantiles)
     plaqs_t = display_setup.display_field
+    theme_settings = render_theme_settings(render_theme)
 
     # show logarithm of histogram for plaquettes
     level_summary = display_setup.level_summary
@@ -101,7 +119,9 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     y_physical = (a, a * NY)
     z_physical = (a, a * NZ)
 
-    fig = Figure(size=CURRENT_FIGURE_SIZE)
+    fig = Figure(
+        size=CURRENT_FIGURE_SIZE,
+        backgroundcolor=theme_settings.figure_background)
     # label setting.
     x_positions = range(0, stop=a * NX, length=NX)
     x_labels = [string(round(x, digits=CURRENT_TICK_DIGITS)) for x in x_positions]
@@ -128,15 +148,28 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         title=movie_title,
         xticks=(x_positions, x_labels),
         yticks=(y_positions, y_labels),
-        zticks=(z_positions, z_labels), aspect=CURRENT_ASPECT)
+        zticks=(z_positions, z_labels),
+        aspect=CURRENT_ASPECT,
+        backgroundcolor=theme_settings.axis_background,
+        xlabelcolor=theme_settings.text_color,
+        ylabelcolor=theme_settings.text_color,
+        zlabelcolor=theme_settings.text_color,
+        titlecolor=theme_settings.text_color,
+        xticklabelcolor=theme_settings.text_color,
+        yticklabelcolor=theme_settings.text_color,
+        zticklabelcolor=theme_settings.text_color,
+        xtickcolor=theme_settings.text_color,
+        ytickcolor=theme_settings.text_color,
+        ztickcolor=theme_settings.text_color,
+        xgridcolor=theme_settings.grid_color,
+        ygridcolor=theme_settings.grid_color,
+        zgridcolor=theme_settings.grid_color)
 
     # Dummy plot 
     dummy_data = zeros(Float64, NX, NY, NZ)
+    dummy_kwargs = contour_plot_kwargs(display_setup.contour_style, [levels[1]])
     plot_obj = GLMakie.contour!(ax, x_physical, y_physical, z_physical, dummy_data;
-        levels=[levels[1]],
-        colormap=CURRENT_COLORMAP,
-        transparency=CURRENT_TRANSPARENCY,
-        alpha=CURRENT_ALPHA)
+        dummy_kwargs...)
 
     framerate = CURRENT_MOVIE_FRAMERATE
     t_end = NT * CURRENT_MOVIE_NLOOPS # If you want to loop the video manually, 1 should replaced by some large number.
@@ -148,11 +181,9 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
 
         ax.title = movie_title
 
+        contour_kwargs = contour_plot_kwargs(display_setup.contour_style, levels)
         plot_obj = GLMakie.contour!(ax, x_physical, y_physical, z_physical, plaqs;
-            levels=levels,
-            colormap=CURRENT_COLORMAP,
-            transparency=CURRENT_TRANSPARENCY,
-            alpha=CURRENT_ALPHA)
+            contour_kwargs...)
     end
 
     metadata = animation_metadata(
@@ -170,6 +201,8 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         title=movie_title,
         display_transform_info=display_setup.display_transform_info,
         level_selection_info=display_setup.level_selection_info,
+        render_style_info=display_setup.render_style_info,
+        render_theme_info=render_theme_metadata(render_theme),
     )
     write_animation_metadata(metadata_filename, metadata)
     return (video=videoname, metadata=metadata_filename)
