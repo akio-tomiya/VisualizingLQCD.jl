@@ -31,11 +31,42 @@ function calculate_a(beta::Float64)::Float64
     return r_0 * exp(ln_a(beta))
 end
 
+function plaquette_display_level_setup(raw_plaqs_t; level_target::Symbol=CURRENT_LEVEL_TARGET)
+    if level_target == LEVEL_TARGET_LEGACY_NEGLOG_HIGH
+        display_field = transform_field_neglog(raw_plaqs_t)
+        level_summary = legacy_level_summary(display_field)
+        levels = legacy_mean_std_levels(level_summary)
+        return (
+            display_field=display_field,
+            level_summary=level_summary,
+            levels=levels,
+            display_transform_info=display_transform_metadata(),
+            level_selection_info=level_selection_metadata(levels, level_summary),
+            title=DEFAULT_MOVIE_TITLE,
+        )
+    elseif level_target == LEVEL_TARGET_RAW_HIGH
+        display_field = copy(raw_plaqs_t)
+        level_summary = legacy_level_summary(display_field)
+        levels = raw_high_quantile_levels(display_field)
+        return (
+            display_field=display_field,
+            level_summary=level_summary,
+            levels=levels,
+            display_transform_info=raw_display_transform_metadata(),
+            level_selection_info=raw_high_level_selection_metadata(levels, level_summary),
+            title=RAW_HIGH_MOVIE_TITLE,
+        )
+    else
+        throw(ArgumentError("unsupported level_target: $level_target"))
+    end
+end
+
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
     filename=CURRENT_FILENAME_DEFAULT,
-    metadata_filename=default_metadata_filename(videoname))
+    metadata_filename=default_metadata_filename(videoname),
+    level_target=CURRENT_LEVEL_TARGET)
 
     #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
     Nwing = CURRENT_NWING
@@ -50,12 +81,14 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     # Calculating field strength using plaquette
     # In precise, we need 1/β
     raw_plaqs_t = plaquette_plane_deviation(U1, NX, NY, NZ, NT, NC)
-    plaqs_t = transform_field_neglog(raw_plaqs_t)
+    display_setup = plaquette_display_level_setup(raw_plaqs_t; level_target=level_target)
+    plaqs_t = display_setup.display_field
 
     # show logarithm of histogram for plaquettes
-    level_summary = legacy_level_summary(plaqs_t)
+    level_summary = display_setup.level_summary
     print_legacy_level_summary(level_summary)
-    levels = legacy_mean_std_levels(level_summary)
+    levels = display_setup.levels
+    movie_title = display_setup.title
 
     #= To check iso-level, please use here
     hist_p = histogram(vec(plaqs_t))
@@ -92,7 +125,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     # Make Axis3
     ax = Axis3(fig[1, 1],
         xlabel=myxlabel, ylabel=myylabel, zlabel=myzlabel,
-        title=DEFAULT_MOVIE_TITLE,
+        title=movie_title,
         xticks=(x_positions, x_labels),
         yticks=(y_positions, y_labels),
         zticks=(z_positions, z_labels), aspect=CURRENT_ASPECT)
@@ -113,7 +146,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
 
         plaqs = plaqs_t[:, :, :, slice4]
 
-        ax.title = DEFAULT_MOVIE_TITLE
+        ax.title = movie_title
 
         plot_obj = GLMakie.contour!(ax, x_physical, y_physical, z_physical, plaqs;
             levels=levels,
@@ -134,7 +167,9 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         level_summary=level_summary,
         framerate=framerate,
         nloops=CURRENT_MOVIE_NLOOPS,
-        title=DEFAULT_MOVIE_TITLE,
+        title=movie_title,
+        display_transform_info=display_setup.display_transform_info,
+        level_selection_info=display_setup.level_selection_info,
     )
     write_animation_metadata(metadata_filename, metadata)
     return (video=videoname, metadata=metadata_filename)

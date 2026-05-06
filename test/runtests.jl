@@ -36,6 +36,12 @@ end
     @test VisualizingLQCD.raw_equivalent_levels_neglog([1.5, 2.0]) ≈
           [exp(-1.5) - VisualizingLQCD.CURRENT_LOG_EPSILON,
            exp(-2.0) - VisualizingLQCD.CURRENT_LOG_EPSILON]
+    @test VisualizingLQCD.raw_high_quantile_levels([1.0, 4.0, 2.0, 3.0]; quantiles=(0.0, 1.0)) ==
+          [1.0, 4.0]
+    raw_setup = VisualizingLQCD.plaquette_display_level_setup(
+        [1.0, 4.0, 2.0, 3.0]; level_target=VisualizingLQCD.LEVEL_TARGET_RAW_HIGH)
+    @test raw_setup.display_transform_info["kind"] == "identity"
+    @test raw_setup.level_selection_info["raw_focus_for_upper_levels"] == "high_raw_deviation"
     @test VisualizingLQCD.transform_field_neglog([0.0, 1.0]) ≈
           [VisualizingLQCD.display_transform_neglog(0.0),
            VisualizingLQCD.display_transform_neglog(1.0)]

@@ -27,6 +27,8 @@ function animation_metadata(;
     framerate,
     nloops,
     title,
+    display_transform_info=display_transform_metadata(),
+    level_selection_info=level_selection_metadata(levels, level_summary),
 )
     return Dict(
         "schema_version" => 1,
@@ -46,8 +48,8 @@ function animation_metadata(;
             "kind" => "plaquette_plane",
             "wilsonline_loop" => [collect(step) for step in CURRENT_WILSONLINE_LOOP],
         ),
-        "display_transform" => display_transform_metadata(),
-        "level_selection" => level_selection_metadata(levels, level_summary),
+        "display_transform" => display_transform_info,
+        "level_selection" => level_selection_info,
         "frame_map" => frame_slice_map(lattice_size[4]; nloops=nloops),
         "flow" => Dict("steps" => flow_steps),
         "render" => Dict(
