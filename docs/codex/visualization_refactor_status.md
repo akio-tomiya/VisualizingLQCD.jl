@@ -4,7 +4,7 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated during the PR8 render-diagnostics work.
+Last updated during the PR9 thermal-preset work.
 
 ## Current branch state
 
@@ -16,6 +16,10 @@ Last updated during the PR8 render-diagnostics work.
   - Commit: `c8f15c0 Add plaquette render diagnostics`
   - Adds raw-high color range metadata, transparency, and light/dark render
     themes.
+- `codex/pr9-plaquette-thermal-preset` is stacked on PR8.
+  - Adds an opt-in plaquette thermal render style.
+  - Uses dark theme plus cyan/turquoise/yellow/red colors for raw-high
+    plaquette deviation.
 - A local untracked `Manifest.toml` exists from dependency resolution. Keep it
   out of unrelated commits unless the project deliberately decides to track a
   manifest.
@@ -94,6 +98,19 @@ create_animation(...; level_target=VisualizingLQCD.LEVEL_TARGET_RAW_HIGH)
   - `render_theme=:light/:dark`,
   - render style metadata.
 
+### PR9: plaquette thermal render preset
+
+- Branch: `codex/pr9-plaquette-thermal-preset`
+- Status: in progress during this memo update.
+- Purpose: add a named thermal style inspired by the reference movie/screenshot.
+- User-facing option:
+
+```julia
+create_animation(...;
+    level_target=VisualizingLQCD.LEVEL_TARGET_RAW_HIGH,
+    render_style=VisualizingLQCD.RENDER_STYLE_PLAQUETTE_THERMAL)
+```
+
 ## Important Semantic Finding
 
 The legacy display transform is monotone decreasing:
@@ -154,6 +171,21 @@ The comparison page from the PR8 smoke run is:
 
 This path is temporary and should not be committed.
 
+PR9 thermal smoke variants:
+
+- `thermal-q85-a065`: q85, q90, q95, q98 with alpha 0.65.
+- `thermal-q80-a065`: q80, q90, q95, q98 with alpha 0.65.
+- `thermal-q85-solid`: q85, q90, q95, q98 with alpha 1.0 and no transparency.
+- `thermal-core`: q85, q95, q98, q99 with alpha 0.65.
+
+The PR9 comparison page is:
+
+```text
+/private/tmp/VisualizingLQCD-smoke-pr9/view.html
+```
+
+This path is temporary and should not be committed.
+
 ## Testing Notes
 
 Use Julia from juliaup explicitly:
@@ -190,24 +222,6 @@ VisualizingLQCD.jl | 15 pass
 ```
 
 ## Proposed Future PR List
-
-### PR9: plaquette thermal render preset
-
-Goal: reproduce the more readable reference-video style.
-
-Scope:
-
-- Add a named render style/preset, for example `:plaquette_thermal`.
-- Use a dark background by default for this preset.
-- Try a cyan-to-yellow-to-red colormap for raw plaquette deviation.
-- Compare alpha/transparency choices:
-  - `thermal-q85-a065`: q85, q90, q95, q98 with alpha around 0.65.
-  - `thermal-q80-a065`: q80, q90, q95, q98 with alpha around 0.65.
-  - `thermal-q85-solid`: q85, q90, q95, q98 with stronger/solid surfaces.
-  - `thermal-core`: q85, q95, q98, q99 for cyan bulk plus hot cores.
-- Record preset, colormap, alpha, transparency, and quantiles in metadata.
-
-Do not change the default yet.
 
 ### PR10: choose plaquette default
 

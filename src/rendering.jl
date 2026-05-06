@@ -6,6 +6,7 @@ function raw_high_color_range(raw_data; quantiles=CURRENT_RAW_HIGH_COLOR_QUANTIL
 end
 
 function contour_style_metadata(;
+    render_style,
     colormap,
     alpha,
     transparency,
@@ -15,7 +16,8 @@ function contour_style_metadata(;
     color_range=nothing,
 )
     info = Dict(
-        "colormap" => String(colormap),
+        "render_style" => String(render_style),
+        "colormap" => colormap_metadata_value(colormap),
         "alpha" => alpha,
         "transparency" => transparency,
         "color_quantity" => color_quantity,
@@ -30,6 +32,9 @@ function contour_style_metadata(;
     return info
 end
 
+colormap_metadata_value(colormap::Symbol) = String(colormap)
+colormap_metadata_value(colormap) = [String(color) for color in colormap]
+
 function legacy_contour_style()
     return (
         colormap=CURRENT_COLORMAP,
@@ -37,6 +42,7 @@ function legacy_contour_style()
         alpha=CURRENT_ALPHA,
         transparency=CURRENT_TRANSPARENCY,
         metadata=contour_style_metadata(
+            render_style=RENDER_STYLE_CURRENT,
             colormap=CURRENT_COLORMAP,
             alpha=CURRENT_ALPHA,
             transparency=CURRENT_TRANSPARENCY,
@@ -46,17 +52,46 @@ function legacy_contour_style()
     )
 end
 
-function raw_high_contour_style(raw_data; color_quantiles=CURRENT_RAW_HIGH_COLOR_QUANTILES)
+function raw_high_contour_style(raw_data;
+    color_quantiles=CURRENT_RAW_HIGH_COLOR_QUANTILES,
+    colormap=CURRENT_COLORMAP,
+    alpha=CURRENT_RAW_HIGH_ALPHA,
+    transparency=CURRENT_RAW_HIGH_TRANSPARENCY)
     color_range = raw_high_color_range(raw_data; quantiles=color_quantiles)
     return (
-        colormap=CURRENT_COLORMAP,
+        colormap=colormap,
         colorrange=color_range,
-        alpha=CURRENT_RAW_HIGH_ALPHA,
-        transparency=CURRENT_RAW_HIGH_TRANSPARENCY,
+        alpha=alpha,
+        transparency=transparency,
         metadata=contour_style_metadata(
-            colormap=CURRENT_COLORMAP,
-            alpha=CURRENT_RAW_HIGH_ALPHA,
-            transparency=CURRENT_RAW_HIGH_TRANSPARENCY,
+            render_style=RENDER_STYLE_CURRENT,
+            colormap=colormap,
+            alpha=alpha,
+            transparency=transparency,
+            color_quantity="raw_plaquette_deviation",
+            color_method="quantile",
+            color_quantiles=color_quantiles,
+            color_range=color_range,
+        ),
+    )
+end
+
+function plaquette_thermal_contour_style(raw_data;
+    color_quantiles=CURRENT_PLAQUETTE_THERMAL_COLOR_QUANTILES,
+    colormap=CURRENT_PLAQUETTE_THERMAL_COLORMAP,
+    alpha=CURRENT_PLAQUETTE_THERMAL_ALPHA,
+    transparency=CURRENT_PLAQUETTE_THERMAL_TRANSPARENCY)
+    color_range = raw_high_color_range(raw_data; quantiles=color_quantiles)
+    return (
+        colormap=collect(colormap),
+        colorrange=color_range,
+        alpha=alpha,
+        transparency=transparency,
+        metadata=contour_style_metadata(
+            render_style=RENDER_STYLE_PLAQUETTE_THERMAL,
+            colormap=colormap,
+            alpha=alpha,
+            transparency=transparency,
             color_quantity="raw_plaquette_deviation",
             color_method="quantile",
             color_quantiles=color_quantiles,
@@ -76,6 +111,55 @@ function contour_plot_kwargs(style, levels)
         kwargs[:colorrange] = style.colorrange
     end
     return kwargs
+end
+
+function default_raw_high_level_quantiles(render_style::Symbol)
+    if render_style == RENDER_STYLE_CURRENT
+        return CURRENT_RAW_HIGH_QUANTILES
+    elseif render_style == RENDER_STYLE_PLAQUETTE_THERMAL
+        return CURRENT_PLAQUETTE_THERMAL_LEVEL_QUANTILES
+    else
+        throw(ArgumentError("unsupported render_style: $render_style"))
+    end
+end
+
+function default_raw_high_color_quantiles(render_style::Symbol)
+    if render_style == RENDER_STYLE_CURRENT
+        return CURRENT_RAW_HIGH_COLOR_QUANTILES
+    elseif render_style == RENDER_STYLE_PLAQUETTE_THERMAL
+        return CURRENT_PLAQUETTE_THERMAL_COLOR_QUANTILES
+    else
+        throw(ArgumentError("unsupported render_style: $render_style"))
+    end
+end
+
+function raw_high_contour_style_for_render(raw_data, render_style::Symbol;
+    color_quantiles,
+    alpha=nothing,
+    transparency=nothing)
+    if render_style == RENDER_STYLE_CURRENT
+        return raw_high_contour_style(raw_data;
+            color_quantiles=color_quantiles,
+            alpha=something(alpha, CURRENT_RAW_HIGH_ALPHA),
+            transparency=something(transparency, CURRENT_RAW_HIGH_TRANSPARENCY))
+    elseif render_style == RENDER_STYLE_PLAQUETTE_THERMAL
+        return plaquette_thermal_contour_style(raw_data;
+            color_quantiles=color_quantiles,
+            alpha=something(alpha, CURRENT_PLAQUETTE_THERMAL_ALPHA),
+            transparency=something(transparency, CURRENT_PLAQUETTE_THERMAL_TRANSPARENCY))
+    else
+        throw(ArgumentError("unsupported render_style: $render_style"))
+    end
+end
+
+function effective_render_theme(render_style::Symbol, render_theme)
+    if render_theme !== nothing
+        return render_theme
+    elseif render_style == RENDER_STYLE_PLAQUETTE_THERMAL
+        return RENDER_THEME_DARK
+    else
+        return CURRENT_RENDER_THEME
+    end
 end
 
 function render_theme_settings(render_theme::Symbol)

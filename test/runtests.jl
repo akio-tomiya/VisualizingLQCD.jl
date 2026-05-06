@@ -51,6 +51,18 @@ end
     @test raw_setup.contour_style.alpha == VisualizingLQCD.CURRENT_RAW_HIGH_ALPHA
     @test VisualizingLQCD.render_theme_metadata(
         VisualizingLQCD.RENDER_THEME_DARK)["render_theme"] == "dark"
+    thermal_setup = VisualizingLQCD.plaquette_display_level_setup(
+        [1.0, 4.0, 2.0, 3.0];
+        level_target=VisualizingLQCD.LEVEL_TARGET_RAW_HIGH,
+        render_style=VisualizingLQCD.RENDER_STYLE_PLAQUETTE_THERMAL,
+        raw_high_level_quantiles=(0.0, 1.0),
+        raw_high_color_quantiles=(0.0, 1.0))
+    @test thermal_setup.render_style_info["render_style"] == "plaquette_thermal"
+    @test thermal_setup.render_style_info["colormap"] == ["cyan", "turquoise", "yellow", "red"]
+    @test thermal_setup.contour_style.alpha == VisualizingLQCD.CURRENT_PLAQUETTE_THERMAL_ALPHA
+    @test VisualizingLQCD.effective_render_theme(
+        VisualizingLQCD.RENDER_STYLE_PLAQUETTE_THERMAL, nothing) ==
+          VisualizingLQCD.RENDER_THEME_DARK
     @test VisualizingLQCD.transform_field_neglog([0.0, 1.0]) ≈
           [VisualizingLQCD.display_transform_neglog(0.0),
            VisualizingLQCD.display_transform_neglog(1.0)]

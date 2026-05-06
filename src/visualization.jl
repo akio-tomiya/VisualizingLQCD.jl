@@ -33,9 +33,18 @@ end
 
 function plaquette_display_level_setup(raw_plaqs_t;
     level_target::Symbol=CURRENT_LEVEL_TARGET,
-    raw_high_level_quantiles=CURRENT_RAW_HIGH_QUANTILES,
-    raw_high_color_quantiles=CURRENT_RAW_HIGH_COLOR_QUANTILES)
+    raw_high_level_quantiles=nothing,
+    raw_high_color_quantiles=nothing,
+    render_style=CURRENT_RENDER_STYLE,
+    render_alpha=nothing,
+    render_transparency=nothing)
+    level_quantiles = something(
+        raw_high_level_quantiles, default_raw_high_level_quantiles(render_style))
+    color_quantiles = something(
+        raw_high_color_quantiles, default_raw_high_color_quantiles(render_style))
     if level_target == LEVEL_TARGET_LEGACY_NEGLOG_HIGH
+        render_style == RENDER_STYLE_CURRENT ||
+            throw(ArgumentError("render_style=$render_style requires level_target raw_high"))
         display_field = transform_field_neglog(raw_plaqs_t)
         level_summary = legacy_level_summary(display_field)
         levels = legacy_mean_std_levels(level_summary)
@@ -53,16 +62,18 @@ function plaquette_display_level_setup(raw_plaqs_t;
     elseif level_target == LEVEL_TARGET_RAW_HIGH
         display_field = copy(raw_plaqs_t)
         level_summary = legacy_level_summary(display_field)
-        levels = raw_high_quantile_levels(display_field; quantiles=raw_high_level_quantiles)
-        contour_style = raw_high_contour_style(
-            display_field; color_quantiles=raw_high_color_quantiles)
+        levels = raw_high_quantile_levels(display_field; quantiles=level_quantiles)
+        contour_style = raw_high_contour_style_for_render(display_field, render_style;
+            color_quantiles=color_quantiles,
+            alpha=render_alpha,
+            transparency=render_transparency)
         return (
             display_field=display_field,
             level_summary=level_summary,
             levels=levels,
             display_transform_info=raw_display_transform_metadata(),
             level_selection_info=raw_high_level_selection_metadata(
-                levels, level_summary; quantiles=raw_high_level_quantiles),
+                levels, level_summary; quantiles=level_quantiles),
             contour_style=contour_style,
             render_style_info=contour_style.metadata,
             title=RAW_HIGH_MOVIE_TITLE,
@@ -78,9 +89,12 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     filename=CURRENT_FILENAME_DEFAULT,
     metadata_filename=default_metadata_filename(videoname),
     level_target=CURRENT_LEVEL_TARGET,
-    raw_high_level_quantiles=CURRENT_RAW_HIGH_QUANTILES,
-    raw_high_color_quantiles=CURRENT_RAW_HIGH_COLOR_QUANTILES,
-    render_theme=CURRENT_RENDER_THEME)
+    raw_high_level_quantiles=nothing,
+    raw_high_color_quantiles=nothing,
+    render_style=CURRENT_RENDER_STYLE,
+    render_alpha=nothing,
+    render_transparency=nothing,
+    render_theme=nothing)
 
     #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
     Nwing = CURRENT_NWING
@@ -98,9 +112,13 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     display_setup = plaquette_display_level_setup(raw_plaqs_t;
         level_target=level_target,
         raw_high_level_quantiles=raw_high_level_quantiles,
-        raw_high_color_quantiles=raw_high_color_quantiles)
+        raw_high_color_quantiles=raw_high_color_quantiles,
+        render_style=render_style,
+        render_alpha=render_alpha,
+        render_transparency=render_transparency)
     plaqs_t = display_setup.display_field
-    theme_settings = render_theme_settings(render_theme)
+    effective_theme = effective_render_theme(render_style, render_theme)
+    theme_settings = render_theme_settings(effective_theme)
 
     # show logarithm of histogram for plaquettes
     level_summary = display_setup.level_summary
@@ -202,7 +220,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         display_transform_info=display_setup.display_transform_info,
         level_selection_info=display_setup.level_selection_info,
         render_style_info=display_setup.render_style_info,
-        render_theme_info=render_theme_metadata(render_theme),
+        render_theme_info=render_theme_metadata(effective_theme),
     )
     write_animation_metadata(metadata_filename, metadata)
     return (video=videoname, metadata=metadata_filename)
