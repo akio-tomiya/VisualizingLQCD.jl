@@ -3,7 +3,7 @@
 - 2025/01/11
 - A. Tomiya akio@yukawa.kyoto-u.ac.jp 
 
-<img src="plaquette_3D_contour_animation24242432beta6.0.gif" alt="QCD vacuum" width="400">
+<img src="plaquette_3D_contour_animation24242432beta6.0.gif" alt="QCD vacuum" width="600">
 
 [Another example (Youtube)](http://youtube.com/shorts/nscMhDamzfg)
 
