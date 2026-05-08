@@ -3,7 +3,7 @@
 - 2025/01/11
 - A. Tomiya akio@yukawa.kyoto-u.ac.jp 
 
-<img src="plaquette_3D_contour_animation24242432beta6.0.gif" alt="QCD vacuum" width="600">
+<img src="plaquette_3D_contour_animation24242432beta6.0.gif" alt="QCD vacuum" width="420">
 
 [Another example (Youtube)](http://youtube.com/shorts/nscMhDamzfg)
 
@@ -68,8 +68,8 @@ configuration_generation.jl : Configuration generation with the heatbath algorit
 constants.jl : constants are defined
 header.jl : packages 
 install_packages.jl : package installer
-plaquette_3D_contour_animation24242432beta6.0.mp4 : sample video
-plaquette_3D_contour_animation24242432beta6.0.gif : sample action-density blob video
+plaquette_3D_contour_animation24242432beta6.0.mp4 : sample action-density orbit video
+plaquette_3D_contour_animation24242432beta6.0.gif : sample action-density orbit video
 visualization.jl : A code for visulalization
 ```
 

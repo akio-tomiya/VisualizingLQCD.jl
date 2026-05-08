@@ -122,8 +122,8 @@ main()
 README.md : This file 
 src
 test
-plaquette_3D_contour_animation24242432beta6.0.mp4 : sample video
-plaquette_3D_contour_animation24242432beta6.0.gif : sample action-density blob video
+plaquette_3D_contour_animation24242432beta6.0.mp4 : sample action-density orbit video
+plaquette_3D_contour_animation24242432beta6.0.gif : sample action-density orbit video
 ```
 
 
