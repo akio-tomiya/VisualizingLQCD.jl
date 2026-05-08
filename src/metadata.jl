@@ -82,6 +82,7 @@ function animation_metadata(;
     render_style_info=Dict{String,Any}(),
     render_theme_info=render_theme_metadata(CURRENT_RENDER_THEME),
     camera_info=camera_motion_metadata(camera_settings(:contour)),
+    render_cache_info=Dict{String,Any}(),
     observable_info=plaquette_plane_observable_metadata(),
 )
     render_info = merge(
@@ -95,6 +96,7 @@ function animation_metadata(;
         render_theme_info,
         render_style_info,
         camera_info,
+        render_cache_info,
     )
     return Dict(
         "schema_version" => 1,

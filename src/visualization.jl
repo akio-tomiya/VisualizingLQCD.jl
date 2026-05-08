@@ -99,6 +99,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     render_alpha=nothing,
     render_transparency=nothing,
     render_theme=nothing,
+    cache_render_slices=CURRENT_CACHE_RENDER_SLICES,
     framerate=nothing,
     nloops=nothing,
     frame_mode=nothing,
@@ -167,6 +168,8 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     effective_frame_mode = frame_mode === nothing ? default_frame_mode(camera.motion) :
                            validate_frame_mode(frame_mode)
     slice4_for_frame(1, NT; frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4)
+    cache_render_slices isa Bool || throw(ArgumentError("cache_render_slices should be Bool"))
+    cache_active = cache_render_slices && display_setup.render_kind == :mesh
 
     #= To check iso-level, please use here
     hist_p = histogram(vec(plaqs_t))
@@ -238,6 +241,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
 
     plot_obj = Ref{Any}(nothing)
+    mesh_cache = Dict{Int,Any}()
     if display_setup.render_kind == :contour
         dummy_data = zeros(Float64, NX, NY, NZ)
         dummy_kwargs = contour_plot_kwargs(display_setup.contour_style, [levels[1]])
@@ -250,12 +254,20 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
             delete!(ax, plot_obj[])
         end
 
-        plaqs = plaqs_t[:, :, :, slice4]
+        plaqs = @view plaqs_t[:, :, :, slice4]
         ax.title = movie_title
 
         if display_setup.render_kind == :mesh
-            plot_obj[], _ = action_density_blob_plot!(ax, plaqs, display_setup;
-                a=a, lattice_size=(NX, NY, NZ))
+            if cache_active
+                geometry = get!(mesh_cache, slice4) do
+                    action_density_blob_geometry(plaqs, display_setup;
+                        a=a, lattice_size=(NX, NY, NZ))
+                end
+                plot_obj[], _ = action_density_blob_plot!(ax, geometry)
+            else
+                plot_obj[], _ = action_density_blob_plot!(ax, plaqs, display_setup;
+                    a=a, lattice_size=(NX, NY, NZ))
+            end
         else
             contour_kwargs = contour_plot_kwargs(display_setup.contour_style, levels)
             plot_obj[] = GLMakie.contour!(ax, x_physical, y_physical, z_physical, plaqs;
@@ -297,6 +309,11 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         render_style_info=display_setup.render_style_info,
         render_theme_info=render_theme_metadata(effective_theme),
         camera_info=camera_motion_metadata(camera),
+        render_cache_info=Dict(
+            "cache_render_slices" => cache_active,
+            "cached_slice_count" => length(mesh_cache),
+            "cache_key" => "slice4",
+        ),
         observable_info=display_setup.observable_info,
     )
     write_animation_metadata(metadata_filename, metadata)

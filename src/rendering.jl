@@ -706,7 +706,7 @@ function action_density_blob_display_setup(action_density)
     )
 end
 
-function action_density_blob_plot!(ax, data, setup; a, lattice_size)
+function action_density_blob_geometry(data, setup; a, lattice_size)
     upsampled = upsample_clamped_3d(data, CURRENT_ACTION_DENSITY_UPSAMPLE_FACTOR)
     render_field = smooth_clamped_3d(upsampled;
         weight=CURRENT_ACTION_DENSITY_POST_SMOOTH_WEIGHT,
@@ -730,5 +730,15 @@ function action_density_blob_plot!(ax, data, setup; a, lattice_size)
         a=a,
         lattice_size=lattice_size)
     mesh_obj = Makie.GeometryBasics.Mesh(smooth_vertices, faces)
-    return mesh!(ax, mesh_obj; color=colors, shading=FastShading, transparency=false), info
+    return (mesh=mesh_obj, colors=colors, info=info)
+end
+
+function action_density_blob_plot!(ax, geometry)
+    return mesh!(ax, geometry.mesh; color=geometry.colors,
+        shading=FastShading, transparency=false), geometry.info
+end
+
+function action_density_blob_plot!(ax, data, setup; a, lattice_size)
+    geometry = action_density_blob_geometry(data, setup; a=a, lattice_size=lattice_size)
+    return action_density_blob_plot!(ax, geometry)
 end

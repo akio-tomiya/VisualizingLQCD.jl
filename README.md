@@ -86,6 +86,8 @@ create_animation(
 To force a shorter or longer movie, pass `nloops` explicitly.
 To rotate while stepping through fourth-direction slices, pass
 `frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`.
+Repeated action-density meshes are cached by slice by default; pass
+`cache_render_slices=false` to disable this.
 
 ## Visualization from scratch
 
