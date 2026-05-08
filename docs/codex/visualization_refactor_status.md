@@ -692,6 +692,11 @@ Record new rendering tests here before deciding what to implement in `src/`.
     `render_style=RENDER_STYLE_CURRENT`. The README sample GIF/MP4 were
     regenerated from the new default renderer using
     `/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg`.
+  - After PR10 merge, the README sample GIF/MP4 were regenerated again from
+    the Dropbox sample URL file
+    `https://www.dropbox.com/scl/fi/ujkmaeszcm33gku7kl67v/Conf24242432beta6.0.ildg?rlkey=4fyzg3krxsy7azlcjgl68nvsm&dl=1`.
+    The GIF now uses an 800px palette-based ffmpeg conversion and the README
+    preview width was increased to 600px.
 
 ## Current Visualization Observations
 
