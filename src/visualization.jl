@@ -110,7 +110,8 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     camera_orbit_turns=CURRENT_CAMERA_ORBIT_TURNS,
     camera_orbit_seconds=CURRENT_CAMERA_ORBIT_SECONDS,
     camera_perspectiveness=nothing,
-    camera_viewmode=nothing)
+    camera_viewmode=nothing,
+    show_render_progress=CURRENT_SHOW_RENDER_PROGRESS)
 
     #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
     Nwing = CURRENT_NWING
@@ -169,6 +170,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
                            validate_frame_mode(frame_mode)
     slice4_for_frame(1, NT; frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4)
     cache_render_slices isa Bool || throw(ArgumentError("cache_render_slices should be Bool"))
+    effective_show_render_progress = validate_show_render_progress(show_render_progress)
     cache_active = cache_render_slices && display_setup.render_kind == :mesh
 
     #= To check iso-level, please use here
@@ -280,6 +282,11 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     t_end = NT * effective_nloops
     fixed_frame = effective_frame_mode == FRAME_MODE_FIXED
     fixed_frame && draw_slice!(fixed_slice4)
+    render_progress = effective_show_render_progress ?
+                      Progress(t_end;
+                          desc=CURRENT_RENDER_PROGRESS_DESCRIPTION,
+                          showspeed=CURRENT_RENDER_PROGRESS_SHOWSPEED) :
+                      nothing
     record(fig, videoname, 1:t_end; framerate=effective_framerate) do i
         apply_camera_settings!(ax, camera, i, t_end)
         if !fixed_frame
@@ -287,6 +294,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
                 frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4)
             draw_slice!(slice4)
         end
+        render_progress === nothing || next!(render_progress)
     end
 
     metadata = animation_metadata(
@@ -308,6 +316,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         level_selection_info=display_setup.level_selection_info,
         render_style_info=display_setup.render_style_info,
         render_theme_info=render_theme_metadata(effective_theme),
+        render_progress_info=render_progress_metadata(effective_show_render_progress),
         camera_info=camera_motion_metadata(camera),
         render_cache_info=Dict(
             "cache_render_slices" => cache_active,

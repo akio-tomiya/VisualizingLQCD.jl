@@ -33,6 +33,11 @@ end
     @test VisualizingLQCD.raw_focus_for_upper_display_levels() == "low_raw_deviation"
     @test VisualizingLQCD.CURRENT_LEVEL_TARGET == VisualizingLQCD.LEVEL_TARGET_ACTION_DENSITY_HIGH
     @test VisualizingLQCD.CURRENT_RENDER_STYLE == VisualizingLQCD.RENDER_STYLE_ACTION_DENSITY_BLOB
+    @test VisualizingLQCD.CURRENT_SHOW_RENDER_PROGRESS
+    @test VisualizingLQCD.validate_show_render_progress(false) == false
+    @test_throws ArgumentError VisualizingLQCD.validate_show_render_progress(:yes)
+    @test VisualizingLQCD.render_progress_metadata(true)["show_render_progress"] == true
+    @test VisualizingLQCD.render_progress_metadata(false)["progress_description"] === nothing
     @test VisualizingLQCD.default_render_style_for_level_target(
         VisualizingLQCD.LEVEL_TARGET_ACTION_DENSITY_HIGH) ==
           VisualizingLQCD.RENDER_STYLE_ACTION_DENSITY_BLOB

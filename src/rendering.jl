@@ -204,6 +204,20 @@ function render_theme_metadata(render_theme::Symbol)
     )
 end
 
+function validate_show_render_progress(show_render_progress)
+    show_render_progress isa Bool ||
+        throw(ArgumentError("show_render_progress should be Bool"))
+    return show_render_progress
+end
+
+function render_progress_metadata(show_render_progress::Bool)
+    return Dict(
+        "show_render_progress" => show_render_progress,
+        "progress_description" => show_render_progress ? CURRENT_RENDER_PROGRESS_DESCRIPTION :
+                                  nothing,
+    )
+end
+
 function validate_camera_motion(camera_motion::Symbol)
     if camera_motion == CAMERA_MOTION_STATIC || camera_motion == CAMERA_MOTION_ORBIT
         return camera_motion

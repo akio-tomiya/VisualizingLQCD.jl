@@ -1071,3 +1071,25 @@ Follow-up:
 
 - Add frame-level render progress reporting. The long GLMakie `record` phase is
   currently silent, even though `t_end` is known.
+
+## 2026-05-09 Render Progress PR
+
+Goal: make long GLMakie movie writes visibly advance while keeping the rendered
+movie unchanged.
+
+Small change:
+
+- Add `show_render_progress=true` to `create_animation`.
+- Use `ProgressMeter.Progress` around the `GLMakie.record` frame loop and call
+  `next!` once per rendered frame.
+- Allow quiet runs with `show_render_progress=false`.
+- Record the progress setting in the metadata sidecar.
+
+Validation:
+
+- `git diff --check` passed.
+- Direct package load and progress metadata assertions passed.
+- Full direct test run in `/private/tmp/VisualizingLQCD-render-progress-test`
+  passed: `VisualizingLQCD.jl | 56 pass`.
+- The direct test run showed `Rendering frames...` progress during the
+  GLMakie record phase.

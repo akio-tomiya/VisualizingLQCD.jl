@@ -81,6 +81,7 @@ function animation_metadata(;
     level_selection_info=level_selection_metadata(levels, level_summary),
     render_style_info=Dict{String,Any}(),
     render_theme_info=render_theme_metadata(CURRENT_RENDER_THEME),
+    render_progress_info=render_progress_metadata(CURRENT_SHOW_RENDER_PROGRESS),
     camera_info=camera_motion_metadata(camera_settings(:contour)),
     render_cache_info=Dict{String,Any}(),
     observable_info=plaquette_plane_observable_metadata(),
@@ -95,6 +96,7 @@ function animation_metadata(;
         ),
         render_theme_info,
         render_style_info,
+        render_progress_info,
         camera_info,
         render_cache_info,
     )
