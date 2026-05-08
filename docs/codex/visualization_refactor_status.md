@@ -8,15 +8,17 @@ Last updated during the PR10 action-density blob trials.
 
 ## Current branch state
 
-- `main` currently contains PR1 through PR6 locally.
-- `codex/pr7-raw-high-levels` is stacked on `main`.
+- `origin/main` currently contains PR1 through PR7 plus the status-memo PR.
+- `codex/pr7-raw-high-levels` is merged on `origin/main`.
   - Commit: `68524da Add raw-high plaquette level target`
   - Adds an opt-in raw-high plaquette deviation target.
-- `codex/pr8-plaquette-render-options` is stacked on PR7.
+- `codex/pr8-plaquette-render-options` is included in the current PR10 branch
+  history and may still need separate merge verification.
   - Commit: `c8f15c0 Add plaquette render diagnostics`
   - Adds raw-high color range metadata, transparency, and light/dark render
     themes.
-- `codex/pr9-plaquette-thermal-preset` is stacked on PR8.
+- `codex/pr9-plaquette-thermal-preset` is included in the current PR10 branch
+  history and may still need separate merge verification.
   - Adds an opt-in plaquette thermal render style.
   - Uses dark theme plus cyan/turquoise/yellow/red colors for raw-high
     plaquette deviation.
