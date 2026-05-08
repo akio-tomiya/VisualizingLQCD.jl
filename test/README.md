@@ -49,6 +49,11 @@ end
 
 One can use a sample [configuration file](https://www.dropbox.com/scl/fi/ujkmaeszcm33gku7kl67v/Conf24242432beta6.0.ildg?rlkey=4fyzg3krxsy7azlcjgl68nvsm&dl=0) (ILDG file).
 
+To rotate the camera during the movie, pass
+`camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT`. The default orbit timing
+matches the included rotated sample movie, about 45.7 seconds per full turn at
+14 fps, and keeps one fourth-direction slice fixed by default.
+
 ## Visualization from scratch
 
 1. Set parameters in ``constants.jl`` (This is a text file, size and the name of the configuration)

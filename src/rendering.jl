@@ -204,6 +204,96 @@ function render_theme_metadata(render_theme::Symbol)
     )
 end
 
+function validate_camera_motion(camera_motion::Symbol)
+    if camera_motion == CAMERA_MOTION_STATIC || camera_motion == CAMERA_MOTION_ORBIT
+        return camera_motion
+    end
+    throw(ArgumentError("unsupported camera_motion: $camera_motion"))
+end
+
+function validate_camera_viewmode(camera_viewmode::Symbol)
+    if camera_viewmode in (:fit, :fitzoom, :stretch, :free)
+        return camera_viewmode
+    end
+    throw(ArgumentError("unsupported camera_viewmode: $camera_viewmode"))
+end
+
+function camera_settings(render_kind::Symbol; camera_motion=CURRENT_CAMERA_MOTION,
+    camera_azimuth=nothing, camera_elevation=nothing,
+    camera_orbit_turns=CURRENT_CAMERA_ORBIT_TURNS,
+    camera_orbit_seconds=CURRENT_CAMERA_ORBIT_SECONDS,
+    camera_perspectiveness=nothing,
+    camera_viewmode=nothing)
+
+    motion = validate_camera_motion(camera_motion)
+    use_default_camera = render_kind == :mesh || motion != CAMERA_MOTION_STATIC
+    azimuth = camera_azimuth !== nothing ? camera_azimuth :
+              (use_default_camera ? CURRENT_CAMERA_AZIMUTH : nothing)
+    elevation = camera_elevation !== nothing ? camera_elevation :
+                (use_default_camera ? CURRENT_CAMERA_ELEVATION : nothing)
+    perspectiveness = camera_perspectiveness !== nothing ? camera_perspectiveness :
+                      (motion == CAMERA_MOTION_ORBIT ? CURRENT_CAMERA_ORBIT_PERSPECTIVENESS :
+                       (render_kind == :mesh ? CURRENT_CAMERA_MESH_PERSPECTIVENESS : nothing))
+    viewmode = camera_viewmode !== nothing ? validate_camera_viewmode(camera_viewmode) :
+               (motion == CAMERA_MOTION_ORBIT ? CURRENT_CAMERA_ORBIT_VIEWMODE : nothing)
+    camera_orbit_seconds > 0 ||
+        throw(ArgumentError("camera_orbit_seconds should be positive"))
+    if perspectiveness !== nothing
+        0 <= perspectiveness <= 1 ||
+            throw(ArgumentError("camera_perspectiveness should be between 0 and 1"))
+    end
+    return (
+        motion=motion,
+        azimuth=azimuth,
+        elevation=elevation,
+        perspectiveness=perspectiveness,
+        viewmode=viewmode,
+        orbit_turns=Float64(camera_orbit_turns),
+        orbit_seconds=Float64(camera_orbit_seconds),
+    )
+end
+
+function default_movie_nloops(NT::Integer, framerate::Real, settings)
+    NT > 0 || throw(ArgumentError("NT should be positive"))
+    framerate > 0 || throw(ArgumentError("framerate should be positive"))
+    if settings.motion != CAMERA_MOTION_ORBIT
+        return CURRENT_MOVIE_NLOOPS
+    end
+    target_frames = abs(settings.orbit_turns) * settings.orbit_seconds * framerate
+    return max(CURRENT_MOVIE_NLOOPS, ceil(Int, target_frames / NT))
+end
+
+function camera_azimuth_for_frame(settings, frame::Integer, total_frames::Integer)
+    if settings.azimuth === nothing
+        return nothing
+    elseif settings.motion == CAMERA_MOTION_STATIC
+        return settings.azimuth
+    elseif settings.motion == CAMERA_MOTION_ORBIT
+        return settings.azimuth + 2pi * settings.orbit_turns * (frame - 1) / total_frames
+    else
+        throw(ArgumentError("unsupported camera_motion: $(settings.motion)"))
+    end
+end
+
+function apply_camera_settings!(ax, settings, frame::Integer, total_frames::Integer)
+    azimuth = camera_azimuth_for_frame(settings, frame, total_frames)
+    azimuth === nothing || (ax.azimuth[] = azimuth)
+    settings.elevation === nothing || (ax.elevation[] = settings.elevation)
+    return nothing
+end
+
+function camera_motion_metadata(settings)
+    return Dict(
+        "camera_motion" => String(settings.motion),
+        "azimuth" => settings.azimuth,
+        "elevation" => settings.elevation,
+        "perspectiveness" => settings.perspectiveness,
+        "viewmode" => settings.viewmode === nothing ? nothing : String(settings.viewmode),
+        "orbit_turns" => settings.orbit_turns,
+        "orbit_seconds" => settings.orbit_seconds,
+    )
+end
+
 periodic_index(i, n) = mod1(i, n)
 
 function smooth_periodic_3d(data; weight=CURRENT_ACTION_DENSITY_SMOOTH_WEIGHT,
