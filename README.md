@@ -64,6 +64,29 @@ create_animation(
 )
 ```
 
+To rotate the camera during the movie, use `camera_motion=:orbit`. By default,
+one orbit follows the timing of the included rotated sample movie
+(`640` frames at `14` fps, about `45.7` seconds). Orbit movies keep one
+fourth-direction slice fixed by default, so the shape is not changed by the
+slice sequence while the camera rotates. It also uses `viewmode=:fit` and
+orthographic projection by default, avoiding the apparent zoom from Makie's
+default `Axis3` fit-zoom behavior. Static movies keep the existing default
+framerate; orbit movies use `14` fps unless `framerate` is passed explicitly.
+
+```julia
+create_animation(
+    NX, NY, NZ, NT, NC, videoname;
+    beta=β,
+    filename=confname,
+    camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT,
+    camera_orbit_turns=1,
+)
+```
+
+To force a shorter or longer movie, pass `nloops` explicitly.
+To rotate while stepping through fourth-direction slices, pass
+`frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`.
+
 ## Visualization from scratch
 
 This takes time because of generation of a gauge configuration.

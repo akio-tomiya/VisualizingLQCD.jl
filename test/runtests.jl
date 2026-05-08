@@ -23,6 +23,9 @@ end
 @testset "VisualizingLQCD.jl" begin
     # Write your tests here.
     @test [VisualizingLQCD.slice4_for_frame(i, 4) for i in 1:4] == [1, 2, 3, 4]
+    @test [VisualizingLQCD.slice4_for_frame(i, 4;
+               frame_mode=VisualizingLQCD.FRAME_MODE_FIXED, fixed_slice4=3) for i in 1:4] ==
+          [3, 3, 3, 3]
     @test VisualizingLQCD.display_transform_neglog(0.0) ≈ -log(VisualizingLQCD.CURRENT_LOG_EPSILON)
     @test VisualizingLQCD.invert_display_level_neglog(
         VisualizingLQCD.display_transform_neglog(0.25),
@@ -36,6 +39,30 @@ end
     @test VisualizingLQCD.default_render_style_for_level_target(
         VisualizingLQCD.LEVEL_TARGET_LEGACY_NEGLOG_HIGH) ==
           VisualizingLQCD.RENDER_STYLE_CURRENT
+    static_camera = VisualizingLQCD.camera_settings(:contour)
+    @test static_camera.motion == VisualizingLQCD.CAMERA_MOTION_STATIC
+    @test static_camera.azimuth === nothing
+    @test static_camera.perspectiveness === nothing
+    mesh_camera = VisualizingLQCD.camera_settings(:mesh)
+    @test mesh_camera.perspectiveness == VisualizingLQCD.CURRENT_CAMERA_MESH_PERSPECTIVENESS
+    orbit_camera = VisualizingLQCD.camera_settings(:contour;
+        camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT,
+        camera_azimuth=0.0,
+        camera_orbit_turns=1.0)
+    @test orbit_camera.perspectiveness == VisualizingLQCD.CURRENT_CAMERA_ORBIT_PERSPECTIVENESS
+    @test orbit_camera.viewmode == VisualizingLQCD.CURRENT_CAMERA_ORBIT_VIEWMODE
+    @test VisualizingLQCD.camera_azimuth_for_frame(orbit_camera, 1, 4) ≈ 0.0
+    @test VisualizingLQCD.camera_azimuth_for_frame(orbit_camera, 3, 4) ≈ pi
+    @test VisualizingLQCD.default_movie_nloops(32, 14, orbit_camera) == 20
+    @test VisualizingLQCD.default_frame_mode(static_camera.motion) ==
+          VisualizingLQCD.FRAME_MODE_SEQUENCE
+    @test VisualizingLQCD.default_frame_mode(orbit_camera.motion) ==
+          VisualizingLQCD.FRAME_MODE_FIXED
+    @test VisualizingLQCD.frame_slice_map(4; nloops=2,
+        frame_mode=VisualizingLQCD.FRAME_MODE_FIXED,
+        fixed_slice4=3)[end]["slice4"] == 3
+    @test VisualizingLQCD.camera_motion_metadata(orbit_camera)["camera_motion"] == "orbit"
+    @test VisualizingLQCD.camera_motion_metadata(orbit_camera)["orbit_seconds"] ≈ 640 / 14
     @test VisualizingLQCD.plaquette_loop(1, 3) == [(1, 1), (3, 1), (1, -1), (3, -1)]
     @test VisualizingLQCD.legacy_mean_std_levels(
         (level=1.0, isorange=0.5, min=0.0, max=2.0, mode=1.0);

@@ -1,15 +1,63 @@
 # Minimal JSON sidecar support for animation metadata.
 
-function slice4_for_frame(frame::Integer, NT::Integer)::Int
-    frame > 0 || throw(ArgumentError("frame should be positive"))
-    NT > 0 || throw(ArgumentError("NT should be positive"))
-    return (frame - 1) % NT + 1
+function validate_frame_mode(frame_mode::Symbol)
+    if frame_mode == FRAME_MODE_SEQUENCE || frame_mode == FRAME_MODE_FIXED
+        return frame_mode
+    end
+    throw(ArgumentError("unsupported frame_mode: $frame_mode"))
 end
 
-function frame_slice_map(NT::Integer; nloops::Integer=CURRENT_MOVIE_NLOOPS)
+function default_frame_mode(camera_motion::Symbol)
+    validate_camera_motion(camera_motion)
+    return camera_motion == CAMERA_MOTION_ORBIT ? FRAME_MODE_FIXED : CURRENT_FRAME_MODE
+end
+
+function slice4_for_frame(frame::Integer, NT::Integer;
+    frame_mode=FRAME_MODE_SEQUENCE, fixed_slice4=CURRENT_FIXED_SLICE4)::Int
+
+    frame > 0 || throw(ArgumentError("frame should be positive"))
+    NT > 0 || throw(ArgumentError("NT should be positive"))
+    mode = validate_frame_mode(frame_mode)
+    if mode == FRAME_MODE_SEQUENCE
+        return (frame - 1) % NT + 1
+    elseif mode == FRAME_MODE_FIXED
+        fixed_slice4 isa Integer || throw(ArgumentError("fixed_slice4 should be an integer"))
+        1 <= fixed_slice4 <= NT || throw(ArgumentError("fixed_slice4 should be in 1:NT"))
+        return fixed_slice4
+    else
+        throw(ArgumentError("unsupported frame_mode: $mode"))
+    end
+end
+
+function frame_slice_map(NT::Integer; nloops::Integer=CURRENT_MOVIE_NLOOPS,
+    frame_mode=FRAME_MODE_SEQUENCE, fixed_slice4=CURRENT_FIXED_SLICE4)
+
     NT > 0 || throw(ArgumentError("NT should be positive"))
     nloops > 0 || throw(ArgumentError("nloops should be positive"))
-    return [Dict("frame" => i, "slice4" => slice4_for_frame(i, NT)) for i in 1:(NT * nloops)]
+    return [Dict(
+                "frame" => i,
+                "slice4" => slice4_for_frame(i, NT;
+                    frame_mode=frame_mode, fixed_slice4=fixed_slice4),
+            ) for i in 1:(NT * nloops)]
+end
+
+function frame_sequence_description(frame_mode::Symbol)
+    mode = validate_frame_mode(frame_mode)
+    if mode == FRAME_MODE_SEQUENCE
+        return "fourth-direction slices"
+    elseif mode == FRAME_MODE_FIXED
+        return "fixed fourth-direction slice"
+    else
+        throw(ArgumentError("unsupported frame_mode: $mode"))
+    end
+end
+
+function frame_mode_metadata(frame_mode::Symbol, fixed_slice4)
+    mode = validate_frame_mode(frame_mode)
+    return Dict(
+        "frame_mode" => String(mode),
+        "fixed_slice4" => mode == FRAME_MODE_FIXED ? fixed_slice4 : nothing,
+    )
 end
 
 default_metadata_filename(videoname::AbstractString) = string(videoname, ".metadata.json")
@@ -27,10 +75,13 @@ function animation_metadata(;
     framerate,
     nloops,
     title,
+    frame_mode=FRAME_MODE_SEQUENCE,
+    fixed_slice4=CURRENT_FIXED_SLICE4,
     display_transform_info=display_transform_metadata(),
     level_selection_info=level_selection_metadata(levels, level_summary),
     render_style_info=Dict{String,Any}(),
     render_theme_info=render_theme_metadata(CURRENT_RENDER_THEME),
+    camera_info=camera_motion_metadata(camera_settings(:contour)),
     observable_info=plaquette_plane_observable_metadata(),
 )
     render_info = merge(
@@ -43,12 +94,13 @@ function animation_metadata(;
         ),
         render_theme_info,
         render_style_info,
+        camera_info,
     )
     return Dict(
         "schema_version" => 1,
         "interpretation" => Dict(
             "spacetime" => "Euclidean lattice configuration",
-            "frame_sequence" => "fourth-direction slices",
+            "frame_sequence" => frame_sequence_description(frame_mode),
             "not_real_time_minkowski_evolution" => true,
             "screen_time_label" => false,
         ),
@@ -61,7 +113,9 @@ function animation_metadata(;
         "observable" => observable_info,
         "display_transform" => display_transform_info,
         "level_selection" => level_selection_info,
-        "frame_map" => frame_slice_map(lattice_size[4]; nloops=nloops),
+        "frame_selection" => frame_mode_metadata(frame_mode, fixed_slice4),
+        "frame_map" => frame_slice_map(lattice_size[4];
+            nloops=nloops, frame_mode=frame_mode, fixed_slice4=fixed_slice4),
         "flow" => Dict("steps" => flow_steps),
         "render" => render_info,
     )

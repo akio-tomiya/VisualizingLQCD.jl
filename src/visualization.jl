@@ -98,7 +98,18 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     render_style=nothing,
     render_alpha=nothing,
     render_transparency=nothing,
-    render_theme=nothing)
+    render_theme=nothing,
+    framerate=nothing,
+    nloops=nothing,
+    frame_mode=nothing,
+    fixed_slice4=CURRENT_FIXED_SLICE4,
+    camera_motion=CURRENT_CAMERA_MOTION,
+    camera_azimuth=nothing,
+    camera_elevation=nothing,
+    camera_orbit_turns=CURRENT_CAMERA_ORBIT_TURNS,
+    camera_orbit_seconds=CURRENT_CAMERA_ORBIT_SECONDS,
+    camera_perspectiveness=nothing,
+    camera_viewmode=nothing)
 
     #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
     Nwing = CURRENT_NWING
@@ -138,6 +149,24 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     print_legacy_level_summary(level_summary)
     levels = display_setup.levels
     movie_title = display_setup.title
+    camera = camera_settings(display_setup.render_kind;
+        camera_motion=camera_motion,
+        camera_azimuth=camera_azimuth,
+        camera_elevation=camera_elevation,
+        camera_orbit_turns=camera_orbit_turns,
+        camera_orbit_seconds=camera_orbit_seconds,
+        camera_perspectiveness=camera_perspectiveness,
+        camera_viewmode=camera_viewmode)
+    effective_framerate = framerate !== nothing ? framerate :
+                          (camera.motion == CAMERA_MOTION_ORBIT ?
+                           CURRENT_CAMERA_ORBIT_FRAMERATE : CURRENT_MOVIE_FRAMERATE)
+    effective_framerate > 0 || throw(ArgumentError("framerate should be positive"))
+    effective_nloops = nloops === nothing ? default_movie_nloops(NT, effective_framerate, camera) : nloops
+    effective_nloops isa Integer || throw(ArgumentError("nloops should be an integer"))
+    effective_nloops > 0 || throw(ArgumentError("nloops should be positive"))
+    effective_frame_mode = frame_mode === nothing ? default_frame_mode(camera.motion) :
+                           validate_frame_mode(frame_mode)
+    slice4_for_frame(1, NT; frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4)
 
     #= To check iso-level, please use here
     hist_p = histogram(vec(plaqs_t))
@@ -198,14 +227,15 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         :ygridcolor => theme_settings.grid_color,
         :zgridcolor => theme_settings.grid_color,
     )
-    if display_setup.render_kind == :mesh
-        axis_kwargs[:perspectiveness] = 0.58
-        axis_kwargs[:azimuth] = -0.62pi
-        axis_kwargs[:elevation] = 0.18pi
-    end
+    camera.azimuth === nothing || (axis_kwargs[:azimuth] = camera.azimuth)
+    camera.elevation === nothing || (axis_kwargs[:elevation] = camera.elevation)
+    camera.perspectiveness === nothing ||
+        (axis_kwargs[:perspectiveness] = camera.perspectiveness)
+    camera.viewmode === nothing || (axis_kwargs[:viewmode] = camera.viewmode)
 
     # Make Axis3
     ax = Axis3(fig[1, 1]; axis_kwargs...)
+    limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
 
     plot_obj = Ref{Any}(nothing)
     if display_setup.render_kind == :contour
@@ -215,16 +245,12 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
             dummy_kwargs...)
     end
 
-    framerate = CURRENT_MOVIE_FRAMERATE
-    t_end = NT * CURRENT_MOVIE_NLOOPS # If you want to loop the video manually, 1 should replaced by some large number.
-    record(fig, videoname, 1:t_end; framerate=framerate) do i
-        slice4 = slice4_for_frame(i, NT)
+    function draw_slice!(slice4)
         if plot_obj[] !== nothing
             delete!(ax, plot_obj[])
         end
 
         plaqs = plaqs_t[:, :, :, slice4]
-
         ax.title = movie_title
 
         if display_setup.render_kind == :mesh
@@ -234,6 +260,20 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
             contour_kwargs = contour_plot_kwargs(display_setup.contour_style, levels)
             plot_obj[] = GLMakie.contour!(ax, x_physical, y_physical, z_physical, plaqs;
                 contour_kwargs...)
+        end
+        limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
+        return nothing
+    end
+
+    t_end = NT * effective_nloops
+    fixed_frame = effective_frame_mode == FRAME_MODE_FIXED
+    fixed_frame && draw_slice!(fixed_slice4)
+    record(fig, videoname, 1:t_end; framerate=effective_framerate) do i
+        apply_camera_settings!(ax, camera, i, t_end)
+        if !fixed_frame
+            slice4 = slice4_for_frame(i, NT;
+                frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4)
+            draw_slice!(slice4)
         end
     end
 
@@ -247,13 +287,16 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         flow_steps=flow_steps_in,
         levels=levels,
         level_summary=level_summary,
-        framerate=framerate,
-        nloops=CURRENT_MOVIE_NLOOPS,
+        framerate=effective_framerate,
+        nloops=effective_nloops,
         title=movie_title,
+        frame_mode=effective_frame_mode,
+        fixed_slice4=fixed_slice4,
         display_transform_info=display_setup.display_transform_info,
         level_selection_info=display_setup.level_selection_info,
         render_style_info=display_setup.render_style_info,
         render_theme_info=render_theme_metadata(effective_theme),
+        camera_info=camera_motion_metadata(camera),
         observable_info=display_setup.observable_info,
     )
     write_animation_metadata(metadata_filename, metadata)

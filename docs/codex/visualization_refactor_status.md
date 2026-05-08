@@ -949,3 +949,57 @@ Notes:
 SU(2) instanton generation and SU(2)-in-SU(3) embedding should stay in a
 separate Gaugefields.jl-focused thread/project. Once that fixture exists, it can
 be used here to validate topological charge density visualization.
+
+## 2026-05-08 Rotation Animation Option
+
+Context:
+
+- The repository already had a tracked rotated movie,
+  `plaquette_3D_contour_animation24242432beta6.0rot.mp4`.
+- Search through the current `src/` and the initial `visualization.jl` commit
+  did not find the old rotation-generation code. The retained artifact appears
+  to be the rendered movie, not the code path that produced it.
+
+Current PR direction:
+
+- Add an opt-in camera motion keyword to `create_animation`.
+- Keep the default camera static so existing calls remain stable.
+- Use `camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT` and
+  `camera_orbit_turns=1` for one full camera orbit.
+- Match the old rotated sample timing by default: `640` frames at `14` fps,
+  about `45.7` seconds per full turn.
+- Orbit movies default to `FRAME_MODE_FIXED`, meaning one fourth-direction slice
+  is held fixed while the camera rotates. This separates camera motion from
+  fourth-direction slice animation, which looked too violent in early smoke
+  tests.
+- Static movies keep the existing default framerate; orbit movies default to
+  `14` fps unless the caller passes `framerate`.
+- Axis limits are fixed to the full spatial lattice volume during rendering so
+  the camera orbit does not look like zooming in and out as mesh geometry
+  changes.
+- Orbit movies use `viewmode=:fit` instead of Makie's default `:fitzoom`.
+  `:fitzoom` rescales the projected axis cuboid as azimuth changes, which made
+  the movie look like it was moving closer and farther away.
+- Orbit movies use `perspectiveness=0.0` by default, leaving the old mesh
+  perspective default for static renders.
+- Record camera settings and frame selection in the metadata sidecar.
+
+Validation:
+
+- Full test run in `/private/tmp/VisualizingLQCD-rotation-test` passed:
+  `VisualizingLQCD.jl | 44 pass`.
+- Initial too-fast smoke output was
+  `/private/tmp/VisualizingLQCD-rotation-test/orbit-smoke.mp4`; it used only
+  `16` frames and is intentionally superseded by the slower orbit timing.
+- Speed-check preview using the same angular speed as the reference, but only
+  `0.175` turns:
+  `/private/tmp/VisualizingLQCD-rotation-test/orbit-slow-speed-preview.mp4`.
+- Fixed-slice smoke preview:
+  `/private/tmp/VisualizingLQCD-rotation-test/orbit-fixed-slice-preview.mp4`.
+- 24^3 sample fixed-slice31 preview:
+  `/private/tmp/VisualizingLQCD-rotation-test/orbit-fixed-slice31-24cube-preview.mp4`.
+- After switching orbit camera to `viewmode=:fit` and `perspectiveness=0.0`,
+  the fixed-slice31 preview is:
+  `/private/tmp/VisualizingLQCD-rotation-test/orbit-fixed-slice31-fit-ortho-preview.mp4`.
+- Combined fourth-direction sequence plus constant-scale orbit preview:
+  `/private/tmp/VisualizingLQCD-rotation-test/orbit-sequence-fit-ortho-preview.mp4`.
