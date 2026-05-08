@@ -29,7 +29,21 @@ function animation_metadata(;
     title,
     display_transform_info=display_transform_metadata(),
     level_selection_info=level_selection_metadata(levels, level_summary),
+    render_style_info=Dict{String,Any}(),
+    render_theme_info=render_theme_metadata(CURRENT_RENDER_THEME),
+    observable_info=plaquette_plane_observable_metadata(),
 )
+    render_info = merge(
+        Dict(
+            "output" => String(videoname),
+            "metadata_output" => String(metadata_filename),
+            "framerate" => framerate,
+            "nloops" => nloops,
+            "title" => title,
+        ),
+        render_theme_info,
+        render_style_info,
+    )
     return Dict(
         "schema_version" => 1,
         "interpretation" => Dict(
@@ -44,21 +58,12 @@ function animation_metadata(;
             "nc" => nc,
             "beta" => beta,
         ),
-        "observable" => Dict(
-            "kind" => "plaquette_plane",
-            "wilsonline_loop" => [collect(step) for step in CURRENT_WILSONLINE_LOOP],
-        ),
+        "observable" => observable_info,
         "display_transform" => display_transform_info,
         "level_selection" => level_selection_info,
         "frame_map" => frame_slice_map(lattice_size[4]; nloops=nloops),
         "flow" => Dict("steps" => flow_steps),
-        "render" => Dict(
-            "output" => String(videoname),
-            "metadata_output" => String(metadata_filename),
-            "framerate" => framerate,
-            "nloops" => nloops,
-            "title" => title,
-        ),
+        "render" => render_info,
     )
 end
 

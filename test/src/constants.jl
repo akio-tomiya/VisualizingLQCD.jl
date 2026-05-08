@@ -3,8 +3,8 @@
 # Parameters
 NX = 24
 NY = 24
-NZ = 24 
-NT = 32 # Time direction
+NZ = 24
+NT = 32 # Euclidean fourth direction
 β = 6.0
 NC = 3
 

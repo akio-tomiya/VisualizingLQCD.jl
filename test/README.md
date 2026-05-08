@@ -11,7 +11,7 @@
 
 This code set visualizes a configuration in **ILDG** format. This is written in Julia language. This contains configuration generation through [JuliaQCD](https://github.com/JuliaQCD).
 
-The temporal extent is regarded as the *real time* direction. An iso-surface of the plaquette (field strength) are plotted.
+The fourth lattice direction is shown as a sequence of Euclidean slices; it is not treated as real-time evolution. By default, the package renders local action-density blobs inspired by the VisualQCD / QCD Lava Lamp style. The older plaquette log iso-surface renderer is still available as a legacy mode.
 
 # How to use
 
@@ -31,7 +31,7 @@ function test()
     NX = 24
     NY = 24
     NZ = 24
-    NT = 32 # Time direction
+    NT = 32 # Euclidean fourth direction
     β = 6.0
     NC = 3
 
@@ -42,7 +42,7 @@ function test()
     videoname = "plaquette_3D_contour_animation$(NX)$(NY)$(NZ)$(NT)beta$(β).mp4"
 
     @time plaq_t = heatbathtest_4D(NX, NY, NZ, NT, β, NC, flow_steps_in, confname)
-    # Execute
+    # Default: local action-density blob visualization
     create_animation(NX, NY, NZ, NT, NC, videoname; beta=β, filename=confname)
 end
 ```
@@ -64,7 +64,7 @@ constants.jl : constants are defined
 header.jl : packages 
 install_packages.jl : package installer
 plaquette_3D_contour_animation24242432beta6.0.mp4 : sample video
-plaquette_3D_contour_animation24242432beta6.0.gif : sample video
+plaquette_3D_contour_animation24242432beta6.0.gif : sample action-density blob video
 visualization.jl : A code for visulalization
 ```
 
@@ -76,4 +76,3 @@ visualization.jl : A code for visulalization
 - Please mention this code set/video if you use in a presentation or paper.
 - Similar package can be seen in [AnimateLQCD.jl](https://github.com/akio-tomiya/AnimateLQCD.jl).
 - Pease feel free to contribute to this package.
-
