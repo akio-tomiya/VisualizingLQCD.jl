@@ -1044,6 +1044,34 @@ Validation:
 - Cache smoke metadata confirmed `32` frames with `nloops=2`, `NT=16`, and
   `cached_slice_count=16`.
 
+## 2026-05-09 README Orbit Sample Update
+
+Goal: replace the README sample movie with the accepted fourth-direction
+sequence plus constant-scale orbit style.
+
+Generation settings:
+
+- Configuration:
+  `/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg`.
+- Lattice: `24x24x24x32`, `beta=6.0`, `NC=3`.
+- `camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT`.
+- `frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`.
+- `camera_orbit_turns=0.175`.
+- Output: `128` frames, `14` fps, about `9.14` seconds.
+- Metadata confirmed `cache_render_slices=true` and `cached_slice_count=32`.
+
+Tracked assets:
+
+- `plaquette_3D_contour_animation24242432beta6.0.mp4` compressed to `800x800`.
+- `plaquette_3D_contour_animation24242432beta6.0.gif` generated at `420x420`,
+  `10` fps.
+- `test/plaquette_3D_contour_animation24242432beta6.0.gif` mirrors the root GIF.
+
+Follow-up:
+
+- Add frame-level render progress reporting. The long GLMakie `record` phase is
+  currently silent, even though `t_end` is known.
+
 ## 2026-05-09 Render Progress PR
 
 Goal: make long GLMakie movie writes visibly advance while keeping the rendered
