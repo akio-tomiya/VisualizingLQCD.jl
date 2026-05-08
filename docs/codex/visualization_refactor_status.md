@@ -682,6 +682,14 @@ Record new rendering tests here before deciding what to implement in `src/`.
     4. only after this is stable, consider a more faithful masked volume
        transfer renderer to close the remaining gap to the VisualQCD/Nobel
        reference.
+  - Implementation follow-up on the same PR10 branch:
+    `CURRENT_LEVEL_TARGET` was changed to `:action_density_high` and
+    `CURRENT_RENDER_STYLE` to `:action_density_blob`. The legacy
+    `-log(p + 1e-7)` plaquette iso-surface path is still available through
+    `level_target=LEVEL_TARGET_LEGACY_NEGLOG_HIGH` and
+    `render_style=RENDER_STYLE_CURRENT`. The README sample GIF/MP4 were
+    regenerated from the new default renderer using
+    `/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg`.
 
 ## Current Visualization Observations
 
