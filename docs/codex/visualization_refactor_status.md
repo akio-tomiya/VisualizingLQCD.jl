@@ -1003,3 +1003,43 @@ Validation:
   `/private/tmp/VisualizingLQCD-rotation-test/orbit-fixed-slice31-fit-ortho-preview.mp4`.
 - Combined fourth-direction sequence plus constant-scale orbit preview:
   `/private/tmp/VisualizingLQCD-rotation-test/orbit-sequence-fit-ortho-preview.mp4`.
+
+## 2026-05-08 Performance Improvement Plan
+
+Next PR target: cache action-density blob mesh geometry by fourth-direction
+slice.
+
+Motivation:
+
+- The accepted movie style is fourth-direction slice sequence plus constant
+  scale orbit.
+- For `NT=32` and a full old-style orbit, the movie can have around `640`
+  frames, but only `32` unique fourth-direction slices.
+- The current renderer rebuilds the action-density blob mesh every frame, so
+  repeated loops redo the same expensive upsampling, smoothing, mesh extraction,
+  coloring, and Taubin smoothing work.
+
+Planned small PR:
+
+- Split action-density blob geometry creation from `mesh!` plotting.
+- Add a per-animation in-memory cache keyed by `slice4`.
+- Use the cache only for mesh renderers and only when enabled.
+- Keep visual output unchanged: cached meshes should be the same geometry and
+  colors as the uncached per-frame build.
+- Record cache settings in metadata.
+
+Expected impact:
+
+- For a full orbit sequence with `NT=32`, mesh builds should drop from about
+  `640` to `32`.
+- Fixed-slice orbit is already cheap because the mesh is drawn once and only the
+  camera changes.
+
+Validation:
+
+- Full test run in `/private/tmp/VisualizingLQCD-rotation-test` passed:
+  `VisualizingLQCD.jl | 51 pass`.
+- Cache smoke output:
+  `/private/tmp/VisualizingLQCD-rotation-test/orbit-sequence-cache-smoke.mp4`.
+- Cache smoke metadata confirmed `32` frames with `nloops=2`, `NT=16`, and
+  `cached_slice_count=16`.

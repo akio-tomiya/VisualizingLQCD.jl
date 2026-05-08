@@ -115,6 +115,12 @@ end
     @test action_setup.render_style_info["color_quantiles"] == collect(VisualizingLQCD.CURRENT_ACTION_DENSITY_COLOR_QUANTILES)
     @test VisualizingLQCD.action_density_blob_color(0.5; qmin=0.0, qmax=1.0) isa VisualizingLQCD.Vec3f
     @test VisualizingLQCD.local_color_value(ones(3, 3, 3), 2, 2, 2) == 1.0
+    action_geometry = VisualizingLQCD.action_density_blob_geometry(
+        fill(action_setup.body_level + 1, 2, 2, 2), action_setup;
+        a=1.0, lattice_size=(2, 2, 2))
+    @test action_geometry.info.vertices > 0
+    @test action_geometry.info.faces > 0
+    @test length(action_geometry.colors) == action_geometry.info.vertices
     @test VisualizingLQCD.frame_slice_map(4; nloops=1) == [
         Dict("frame" => 1, "slice4" => 1),
         Dict("frame" => 2, "slice4" => 2),
