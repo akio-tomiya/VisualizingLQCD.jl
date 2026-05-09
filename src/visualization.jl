@@ -87,6 +87,37 @@ function plaquette_display_level_setup(raw_plaqs_t;
     end
 end
 
+function topological_charge_display_level_setup(density_t;
+    level_quantiles=CURRENT_TOPOLOGICAL_CHARGE_LEVEL_QUANTILES,
+    color_quantile=CURRENT_TOPOLOGICAL_CHARGE_COLOR_QUANTILE,
+    render_style=RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED,
+    render_alpha=nothing,
+    render_transparency=nothing)
+
+    render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED ||
+        throw(ArgumentError("topological charge density requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED"))
+    display_field = copy(density_t)
+    level_summary = legacy_level_summary(display_field)
+    levels = signed_symmetric_levels(display_field; quantiles=level_quantiles)
+    contour_style = topological_charge_signed_contour_style(display_field;
+        color_quantile=color_quantile,
+        alpha=something(render_alpha, CURRENT_TOPOLOGICAL_CHARGE_ALPHA),
+        transparency=something(render_transparency, CURRENT_TOPOLOGICAL_CHARGE_TRANSPARENCY))
+    return (
+        render_kind=:contour,
+        display_field=display_field,
+        level_summary=level_summary,
+        levels=levels,
+        display_transform_info=topological_charge_display_transform_metadata(),
+        level_selection_info=topological_charge_level_selection_metadata(
+            levels, level_summary; quantiles=level_quantiles),
+        contour_style=contour_style,
+        render_style_info=contour_style.metadata,
+        observable_info=topological_charge_density_observable_metadata(),
+        title=TOPOLOGICAL_CHARGE_DENSITY_MOVIE_TITLE,
+    )
+end
+
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
@@ -95,6 +126,8 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     level_target=CURRENT_LEVEL_TARGET,
     raw_high_level_quantiles=nothing,
     raw_high_color_quantiles=nothing,
+    topological_level_quantiles=nothing,
+    topological_color_quantile=nothing,
     render_style=nothing,
     render_alpha=nothing,
     render_transparency=nothing,
@@ -132,6 +165,18 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
             throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_ACTION_DENSITY_BLOB"))
         action_density_t = local_action_density(U1, NX, NY, NZ, NT, NC)
         display_setup = action_density_blob_display_setup(action_density_t)
+    elseif level_target == LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY
+        effective_render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED ||
+            throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED"))
+        density_t = topological_charge_density(U1, NX, NY, NZ, NT, NC)
+        display_setup = topological_charge_display_level_setup(density_t;
+            level_quantiles=something(
+                topological_level_quantiles, CURRENT_TOPOLOGICAL_CHARGE_LEVEL_QUANTILES),
+            color_quantile=something(
+                topological_color_quantile, CURRENT_TOPOLOGICAL_CHARGE_COLOR_QUANTILE),
+            render_style=effective_render_style,
+            render_alpha=render_alpha,
+            render_transparency=render_transparency)
     else
         # Calculating field strength using plaquette.
         # In precise, we need 1/β.

@@ -100,6 +100,31 @@ function plaquette_thermal_contour_style(raw_data;
     )
 end
 
+function topological_charge_signed_contour_style(density;
+    color_quantile=CURRENT_TOPOLOGICAL_CHARGE_COLOR_QUANTILE,
+    colormap=CURRENT_TOPOLOGICAL_CHARGE_COLORMAP,
+    alpha=CURRENT_TOPOLOGICAL_CHARGE_ALPHA,
+    transparency=CURRENT_TOPOLOGICAL_CHARGE_TRANSPARENCY)
+
+    color_range = signed_symmetric_color_range(density; quantile_level=color_quantile)
+    return (
+        colormap=collect(colormap),
+        colorrange=color_range,
+        alpha=alpha,
+        transparency=transparency,
+        metadata=contour_style_metadata(
+            render_style=RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED,
+            colormap=colormap,
+            alpha=alpha,
+            transparency=transparency,
+            color_quantity="topological_charge_density",
+            color_method="signed_symmetric_magnitude_quantile",
+            color_quantiles=(color_quantile,),
+            color_range=color_range,
+        ),
+    )
+end
+
 function contour_plot_kwargs(style, levels)
     kwargs = Dict{Symbol,Any}(
         :levels => levels,
@@ -155,6 +180,8 @@ end
 function default_render_style_for_level_target(level_target::Symbol)
     if level_target == LEVEL_TARGET_ACTION_DENSITY_HIGH
         return RENDER_STYLE_ACTION_DENSITY_BLOB
+    elseif level_target == LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY
+        return RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED
     else
         return RENDER_STYLE_CURRENT
     end
@@ -164,7 +191,8 @@ function effective_render_theme(render_style::Symbol, render_theme)
     if render_theme !== nothing
         return render_theme
     elseif render_style == RENDER_STYLE_PLAQUETTE_THERMAL ||
-           render_style == RENDER_STYLE_ACTION_DENSITY_BLOB
+           render_style == RENDER_STYLE_ACTION_DENSITY_BLOB ||
+           render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED
         return RENDER_THEME_DARK
     else
         return CURRENT_RENDER_THEME

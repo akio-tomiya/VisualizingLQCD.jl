@@ -4,7 +4,50 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the topological-density observable pass.
+Last updated on 2026-05-10 during the topological-density signed-rendering pass.
+
+## Active note: 2026-05-10 topological-density signed rendering
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-density-rendering`.
+- Starting point: PR #18 (`codex/topological-density-entry`) was merged, then
+  `main` was fast-forwarded to `cff0f7f`.
+- Goal for this small PR: expose an opt-in signed topological charge density
+  contour renderer without changing the current action-density default.
+- Scope:
+  - add `LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY` and
+    `RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED`;
+  - select positive and negative contour levels from symmetric magnitude
+    quantiles of the signed density;
+  - use a signed blue-white-red colormap on a dark theme;
+  - keep display metadata separate from raw plaquette metadata so the focus is
+    recorded as positive/negative topological charge density;
+  - route `create_animation(...; level_target=:topological_charge_density)` to
+    the clover topological density observable from PR #18.
+- Validation so far:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 124 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass, 124 tests, render smoke skipped
+
+git diff --check
+result: pass
+```
+
+- Still deferred:
+  - visual tuning on an actual nontrivial topological configuration;
+  - instanton/SU(2)-in-SU(3) validation fixture;
+  - volume/dual-surface treatment if contour-only signed rendering is too
+    sparse or visually ambiguous.
 
 ## Active note: 2026-05-10 topological-density observable entry
 

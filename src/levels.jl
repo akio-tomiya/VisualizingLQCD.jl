@@ -39,6 +39,41 @@ function raw_high_quantile_levels(raw_data; quantiles=CURRENT_RAW_HIGH_QUANTILES
     return unique(sort(Float64.(levels)))
 end
 
+function finite_nonzero_abs_values(data)
+    values = Float64[]
+    for x in data
+        if isfinite(x)
+            magnitude = abs(Float64(x))
+            magnitude > 0 && push!(values, magnitude)
+        end
+    end
+    isempty(values) && throw(ArgumentError("signed level data has no nonzero finite values"))
+    return values
+end
+
+function signed_symmetric_levels(data; quantiles=CURRENT_TOPOLOGICAL_CHARGE_LEVEL_QUANTILES)
+    values = finite_nonzero_abs_values(data)
+    magnitudes = unique(sort(Float64.(quantile(values, collect(quantiles)))))
+    levels = Float64[]
+    for magnitude in reverse(magnitudes)
+        magnitude > 0 && push!(levels, -magnitude)
+    end
+    for magnitude in magnitudes
+        magnitude > 0 && push!(levels, magnitude)
+    end
+    return levels
+end
+
+function signed_symmetric_color_range(data;
+    quantile_level=CURRENT_TOPOLOGICAL_CHARGE_COLOR_QUANTILE)
+
+    values = finite_nonzero_abs_values(data)
+    0 <= quantile_level <= 1 ||
+        throw(ArgumentError("signed color quantile should be between 0 and 1"))
+    magnitude = Float64(quantile(values, quantile_level))
+    return (-magnitude, magnitude)
+end
+
 function level_selection_metadata(levels, summary)
     return Dict(
         "level_target" => String(LEVEL_TARGET_LEGACY_NEGLOG_HIGH),
@@ -65,6 +100,25 @@ function raw_high_level_selection_metadata(levels, summary; quantiles=CURRENT_RA
         "display_levels" => collect(levels),
         "raw_equivalent_levels" => collect(levels),
         "raw_focus_for_upper_levels" => raw_high_focus_for_upper_levels(),
+        "summary" => Dict(
+            "level" => summary.level,
+            "isorange" => summary.isorange,
+            "min" => summary.min,
+            "max" => summary.max,
+        ),
+    )
+end
+
+function topological_charge_level_selection_metadata(levels, summary;
+    quantiles=CURRENT_TOPOLOGICAL_CHARGE_LEVEL_QUANTILES)
+
+    return Dict(
+        "level_target" => String(LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY),
+        "method" => "signed_symmetric_magnitude_quantile",
+        "quantiles" => collect(quantiles),
+        "display_levels" => collect(levels),
+        "raw_equivalent_levels" => collect(levels),
+        "raw_focus_for_upper_levels" => "positive_and_negative_topological_charge_density",
         "summary" => Dict(
             "level" => summary.level,
             "isorange" => summary.isorange,
