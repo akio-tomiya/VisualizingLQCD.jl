@@ -4,7 +4,62 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the topological-density signed-rendering pass.
+Last updated on 2026-05-10 during the SU(2) instanton scalar-fixture pass.
+
+## Active note: 2026-05-10 SU(2) instanton scalar fixtures
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/su2-instanton-fixture`.
+- Starting point: PR #19 (`codex/topological-density-rendering`) was merged,
+  then `main` was fast-forwarded to `4cd6a64`.
+- Context: SU(3) instanton gauge-field embedding is being developed in a
+  separate thread. This branch keeps VisualizingLQCD moving by adding SU(2)
+  continuum instanton topological-density fixtures first.
+- Scope:
+  - add scalar SU(2) instanton density fixture
+    `q(x) = sign * 6 rho^4 / (pi^2 (r^2 + rho^2)^4)` sampled on a periodic
+    four-dimensional lattice;
+  - normalize each sampled lump to the requested integer charge by default so
+    finite-volume/debug grids have controlled total `Q`;
+  - add DIGA-like superposition fixtures for qualitative `++` and `+-`
+    signed-rendering tests;
+  - add diagnostics for total charge, positive/negative charge, max/min peak
+    values and peak indices;
+  - add `scripts/topology_fixtures/diagnose_su2_instanton_fixtures.jl`.
+- Important limitation: these fixtures are scalar density fields, not lattice
+  gauge-field instanton solutions. They validate signed rendering, thresholds,
+  position/radius/sign handling, and qualitative multi-lump behavior; they do
+  not validate the Gaugefields.jl clover topological-charge operator.
+- Validation so far:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 144 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/diagnose_su2_instanton_fixtures.jl
+result: pass
+selected outputs: single-plus Q=1.0000000000000002,
+single-minus Q=-1.0000000000000002,
+DIGA ++ Q=1.9999999999999993,
+DIGA +- Q=-3.3306690738754696e-16
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass, 144 tests, render smoke skipped
+
+git diff --check
+result: pass
+```
+
+- Next validation step after this branch: use these fixtures to render small
+  signed topological-density movies/stills and tune positive/negative color
+  levels before moving to Gaugefields.jl-generated SU(2) gauge-field
+  instantons.
 
 ## Active note: 2026-05-10 topological-density signed rendering
 
