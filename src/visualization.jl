@@ -100,10 +100,12 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     render_transparency=nothing,
     render_theme=nothing,
     cache_render_slices=CURRENT_CACHE_RENDER_SLICES,
+    figure_size=CURRENT_FIGURE_SIZE,
     framerate=nothing,
     nloops=nothing,
     frame_mode=nothing,
     fixed_slice4=CURRENT_FIXED_SLICE4,
+    slice_hold_frames=CURRENT_SLICE_HOLD_FRAMES,
     camera_motion=CURRENT_CAMERA_MOTION,
     camera_azimuth=nothing,
     camera_elevation=nothing,
@@ -163,13 +165,19 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
                           (camera.motion == CAMERA_MOTION_ORBIT ?
                            CURRENT_CAMERA_ORBIT_FRAMERATE : CURRENT_MOVIE_FRAMERATE)
     effective_framerate > 0 || throw(ArgumentError("framerate should be positive"))
-    effective_nloops = nloops === nothing ? default_movie_nloops(NT, effective_framerate, camera) : nloops
-    effective_nloops isa Integer || throw(ArgumentError("nloops should be an integer"))
-    effective_nloops > 0 || throw(ArgumentError("nloops should be positive"))
     effective_frame_mode = frame_mode === nothing ? default_frame_mode(camera.motion) :
                            validate_frame_mode(frame_mode)
-    slice4_for_frame(1, NT; frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4)
+    effective_slice_hold_frames = validate_slice_hold_frames(slice_hold_frames)
+    effective_nloops = nloops === nothing ?
+                       default_movie_nloops(NT, effective_framerate, camera;
+                           frame_mode=effective_frame_mode,
+                           slice_hold_frames=effective_slice_hold_frames) : nloops
+    effective_nloops isa Integer || throw(ArgumentError("nloops should be an integer"))
+    effective_nloops > 0 || throw(ArgumentError("nloops should be positive"))
+    slice4_for_frame(1, NT; frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4,
+        slice_hold_frames=effective_slice_hold_frames)
     cache_render_slices isa Bool || throw(ArgumentError("cache_render_slices should be Bool"))
+    effective_figure_size = validate_figure_size(figure_size)
     effective_show_render_progress = validate_show_render_progress(show_render_progress)
     cache_active = cache_render_slices && display_setup.render_kind == :mesh
 
@@ -185,7 +193,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     z_physical = (a, a * NZ)
 
     fig = Figure(
-        size=CURRENT_FIGURE_SIZE,
+        size=effective_figure_size,
         backgroundcolor=theme_settings.figure_background)
     # label setting.
     x_positions = range(0, stop=a * NX, length=NX)
@@ -243,6 +251,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
 
     plot_obj = Ref{Any}(nothing)
+    current_slice4 = Ref{Union{Nothing,Int}}(nothing)
     mesh_cache = Dict{Int,Any}()
     if display_setup.render_kind == :contour
         dummy_data = zeros(Float64, NX, NY, NZ)
@@ -276,10 +285,12 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
                 contour_kwargs...)
         end
         limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
+        current_slice4[] = slice4
         return nothing
     end
 
-    t_end = NT * effective_nloops
+    t_end = total_movie_frames(NT, effective_nloops;
+        frame_mode=effective_frame_mode, slice_hold_frames=effective_slice_hold_frames)
     fixed_frame = effective_frame_mode == FRAME_MODE_FIXED
     fixed_frame && draw_slice!(fixed_slice4)
     render_progress = effective_show_render_progress ?
@@ -291,8 +302,9 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         apply_camera_settings!(ax, camera, i, t_end)
         if !fixed_frame
             slice4 = slice4_for_frame(i, NT;
-                frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4)
-            draw_slice!(slice4)
+                frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4,
+                slice_hold_frames=effective_slice_hold_frames)
+            current_slice4[] == slice4 || draw_slice!(slice4)
         end
         render_progress === nothing || next!(render_progress)
     end
@@ -310,8 +322,10 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         framerate=effective_framerate,
         nloops=effective_nloops,
         title=movie_title,
+        figure_size=effective_figure_size,
         frame_mode=effective_frame_mode,
         fixed_slice4=fixed_slice4,
+        slice_hold_frames=effective_slice_hold_frames,
         display_transform_info=display_setup.display_transform_info,
         level_selection_info=display_setup.level_selection_info,
         render_style_info=display_setup.render_style_info,

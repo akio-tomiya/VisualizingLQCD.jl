@@ -4,9 +4,515 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated during the PR10 action-density blob trials.
+Last updated on 2026-05-10 during the consistency-test and PR-prep pass.
+
+## Active note: 2026-05-10 consistency tests
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Goal: add and run lightweight consistency tests without doing heavy local
+  gauge generation or GLMakie movie rendering by default.
+- Test design added in `test/runtests.jl`:
+  - `Frame selection contracts`: `slice4_for_frame`,
+    `total_movie_frames`, `movie_duration_seconds`, and `frame_slice_map`
+    must agree. Sequence mode checks equal slice counts; fixed mode checks
+    all frames point to the fixed fourth-direction slice.
+  - `Camera orbit contracts`: orbit camera defaults stay orthographic/fit;
+    the README-style full-turn loop has constant azimuth steps, including the
+    last-frame to first-frame loop boundary.
+  - `Metadata contracts`: animation metadata must report
+    `frame_count=768`, `duration_seconds=768/14`, `figure_size=[480, 480]`,
+    a matching `frame_map`, and the Euclidean/not-real-time interpretation.
+  - `Display and render setup contracts`: preserve the neg-log transform,
+    current action-density default, theme/style defaults, action-density blob
+    geometry creation, and palette/color setup.
+  - `Sample artifact contracts`: README points at the current full-turn sample
+    GIF, the display width is `200`, and the expected GIF/MP4 files exist.
+  - `Optional render smoke`: the old heavy `heatbathtest_4D` +
+    `create_animation` smoke test is still available, but only when
+    `VISUALIZING_LQCD_RUN_RENDER_SMOKE=1` is set.
+- Code support added in `src/metadata.jl`:
+  - `movie_duration_seconds(...)`.
+  - metadata `render.frame_count` and `render.duration_seconds`.
+- Removed `test/Project.toml` and `test/Manifest.toml` from the tracked test
+  tree. They described a second nested package with the same
+  `VisualizingLQCD` UUID and caused `Pkg.test()` to resolve the package under
+  test inconsistently.
+- Test results:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 92 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass, 92 tests, render smoke skipped
+Julia: 1.12.4
+
+/Users/akio/.juliaup/bin/julia +1.10 --project=. test/runtests.jl
+result: failed before tests because the untracked root Manifest.toml is a
+Julia 1.12 manifest and pulls an incompatible PrecompileTools/JLD2 stack for
+Julia 1.10. This is an environment/manifest issue, not a code-test failure.
+
+Clean-copy Julia 1.10 check without root Manifest:
+copy: /private/tmp/VisualizingLQCD-julia110-test-20260510
+/Users/akio/.juliaup/bin/julia +1.10 --project=/private/tmp/VisualizingLQCD-julia110-test-20260510 test/runtests.jl
+result: pass, 92 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia +1.10 --project=/private/tmp/VisualizingLQCD-julia110-test-20260510 -e 'using Pkg; Pkg.test()'
+result: pass, 92 tests, render smoke skipped
+```
+
+- Keep the untracked root `Manifest.toml` out of commits unless the project
+  explicitly decides to track a manifest. For Julia 1.10 verification, use a
+  clean checkout/copy without that manifest or generate a Julia-1.10-specific
+  manifest in scratch space.
+- PR-prep cleanup after reading the YITP investigation report:
+  - updated this memo and `scripts/yitp_sample/README.md` so the old exact-1.0
+    failure is recorded as an earlier studio1 copy/read/render-path failure,
+    superseded by the checksum-matched fresh YITP diagnostics;
+  - rechecked shell syntax for the helper shell scripts with `bash -n`;
+  - rechecked `scripts/yitp_sample/render_large_sample.jl` and
+    `scripts/yitp_sample/convert_mp4_to_gif.jl` by loading them with Julia;
+  - reran `git diff --check`, `julia --project=. test/runtests.jl`, and
+    `julia --project=. -e 'using Pkg; Pkg.test()'`: all passed;
+  - confirmed the README MP4 is `480 x 480`, `14` fps, `768` frames,
+    duration `54.857143` seconds by `ffprobe`.
+
+## Active note: 2026-05-09 18:40 JST
+
+- Main task: finish the README/sample movie workflow without doing heavy work
+  on the MacBook Air.
+- Important operating rule from the user: keep notes as the work proceeds,
+  including machine names and current work directories.
+- Historical failure signature: the first studio1 render/read attempt for the
+  YITP-generated `32^3 x 64` configuration found many exact-`1.0`
+  action-density slices after reload. This was a real input/read-path failure,
+  not evidence that the whole visualization code is broken.
+- Superseding investigation: a later fresh copy of the current YITP file had
+  matching checksum
+  `9bc6165178f48b7b49d678d807eb2293fb04bc245fd8aef61e17b81164b716d0`
+  and passed both YITP-side and local Gaugefields v0.5.18 diagnostics with
+  `frac_eq1=0.0` and `frac_ge099=0.0`. Therefore the current best hypothesis
+  is not "the YITP file itself is corrupt"; it is that the earlier studio1
+  copy/workdir/script/environment or missing preflight caused the bad render.
+- Detailed failure report for a separate debugging thread:
+
+```text
+/Users/akio/Downloads/VisualizingLQCD_YITP_32x64_failure_report_20260509.md
+```
+
+- Follow-up investigation report:
+
+```text
+/Users/akio/Downloads/VisualizingLQCD_YITP_32x64_investigation_report_20260509.md
+```
+
+- At that point, the active heavy job was on `studio1`, not on the MacBook Air:
+
+```text
+machine: studio1 (Akios-Mac-Studio.local)
+workdir: /Users/akio/VisualizingLQCD-yitp-local-render
+pid: 37058
+log: /Users/akio/VisualizingLQCD-yitp-local-render/logs/studio-generate-32323264-gf05hb40flow200.log
+output: /Users/akio/VisualizingLQCD-yitp-local-render/outputs/Conf32323264beta6.0-gf05hb40flow200.ildg
+```
+
+- That studio1 run used the same Julia/Gaugefields family for generation and
+  reload checks, with `40` heatbath sweeps and `200` flow steps.
+- Operational rule retained from that failure: do not render a large movie
+  until the saved configuration passes sanity checks (`frac_eq1 == 0`, no
+  all-`1.0` slices, and sane action-density quantiles).
+
+Result update:
+
+- The studio1 corrective generation completed successfully.
+- The process `pid=37058` finished after about 68 minutes.
+- Output files:
+
+```text
+/Users/akio/VisualizingLQCD-yitp-local-render/outputs/Conf32323264beta6.0-gf05hb40flow200.ildg
+/Users/akio/VisualizingLQCD-yitp-local-render/outputs/Conf32323264beta6.0-gf05hb40flow200.ildg.metadata.txt
+/Users/akio/VisualizingLQCD-yitp-local-render/outputs/Conf32323264beta6.0-gf05hb40flow200.ildg.sanity.txt
+```
+
+- `before_save` and `after_reload` sanity checks both passed.
+- Representative `after_reload` diagnostics:
+  - `density_global` quantiles:
+    `[0.00020402076181330608, 0.0009149724579730808,
+    0.001227278741586383, 0.0012995587367358736,
+    0.0014507052576305858, 0.0023145462069107453,
+    0.0645340172355522]`
+  - `frac_eq1=0.0`
+  - `frac_ge099=0.0`
+- This confirms that the same-environment studio1 generation/reload path is
+  sane. It also separated the visualization code from the earlier bad
+  YITP/studio1 read/render attempt.
+- Render from this studio1-generated config was started on `studio1`:
+
+```text
+pid: 45392
+log: /Users/akio/VisualizingLQCD-yitp-local-render/logs/studio-render-20260509-190743.log
+input: /Users/akio/VisualizingLQCD-yitp-local-render/outputs/Conf32323264beta6.0-gf05hb40flow200.ildg
+output: /Users/akio/VisualizingLQCD-yitp-local-render/outputs/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200.mp4
+camera_orbit_turns: 0.175
+```
+
+- Next step after render completion: inspect the movie/contact frames first,
+  then decide whether it should replace README media.
+
+Render result:
+
+- The studio1 render completed in about 12 minutes for `128` frames.
+- Local review copy:
+
+```text
+/private/tmp/VisualizingLQCD-32x64-studio/view.html
+/private/tmp/VisualizingLQCD-32x64-studio/contact.jpg
+/private/tmp/VisualizingLQCD-32x64-studio/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200.mp4
+```
+
+- The contact sheet showed no empty-grid or solid-cube failure like the earlier
+  YITP artifact. The movie is visually usable as a README candidate, though the
+  palette is blue/green heavy compared with the reference VisualQCD style.
+- Repository README media were switched to the new generated sample:
+
+```text
+plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200.mp4
+plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200.gif
+test/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200.gif
+```
+
+Follow-up from visual review:
+
+- The short `0.175`-turn orbit looks good, but because it is meant to loop, the
+  README sample should contain a full camera turn at nearly the same perceived
+  angular speed.
+- `scripts/yitp_sample/render_large_sample.jl` now accepts optional
+  `--nloops` and `--framerate`.
+- `scripts/yitp_sample/studio_render_large_sample.sh` now defaults to the
+  full-turn README candidate:
+
+```text
+camera_orbit_turns: 1.0
+nloops: 11
+framerate: 14
+frames: 704
+duration: about 50 seconds
+output: /Users/akio/VisualizingLQCD-yitp-local-render/outputs/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4
+```
+
+- Full-turn render started on `studio1`:
+
+```text
+pid: 47175
+log: /Users/akio/VisualizingLQCD-yitp-local-render/logs/studio-render-20260509-200007.log
+```
+
+Full-turn result, first attempt:
+
+- The render completed on `studio1` in about `14:37`.
+- Output:
+
+```text
+/Users/akio/VisualizingLQCD-yitp-local-render/outputs/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4
+```
+
+- Metadata:
+  - `frames=704`
+  - `framerate=14`
+  - duration about `50.29` seconds
+  - `orbit_turns=1.0`
+  - `nloops=11`
+- Local review path:
+
+```text
+/private/tmp/VisualizingLQCD-32x64-studio/view.html
+/private/tmp/VisualizingLQCD-32x64-studio/contact-fullturn.jpg
+```
+
+- README media now point to the full-turn GIF/MP4:
+
+```text
+plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4
+plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif
+test/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif
+```
+
+- Loop-boundary review:
+  - The MP4 camera angle uses
+    `azimuth + 2pi * orbit_turns * (frame - 1) / total_frames`, so frame 704
+    is one normal angular step before the first frame, and the player loop
+    completes the final step back to the initial angle.
+  - The 4th-direction slice sequence still jumps periodically from `slice4=64`
+    to `slice4=1`; this is expected for a slice-sequence movie and is separate
+    from camera closure.
+  - The first README GIF was made at `8 fps` from a `14 fps` MP4, which can
+    make the loop boundary visibly uneven because the frame drop cadence does
+    not divide evenly.
+  - The README GIF was regenerated at `7 fps` (`352` frames, about `50.28`
+    seconds, about `8.4M`) so GIF frame sampling is exactly every other MP4
+    frame and the loop boundary has the same cadence as the rest of the movie.
+
+Periodic-loop correction:
+
+- The Euclidean fourth direction is periodic too. To avoid breaking that
+  periodic slice sequence, the README source should not be made by dropping
+  frames from a higher-fps render.
+- New plan: render directly at the final display cadence, with the fourth
+  direction looping an integer number of times while the camera completes one
+  turn.
+- Current periodic-loop render settings:
+
+```text
+camera_orbit_turns: 1.0
+nloops: 6
+framerate: 7
+frames: 64 * 6 = 384
+duration: about 54.9 seconds
+```
+
+- This uses all `64` Euclidean fourth-direction slices in order, six times,
+  while the camera makes one full turn. The loop boundary is then
+  `(slice4=64, final camera step)` -> `(slice4=1, initial camera angle)`, which
+  respects both periodicities.
+- Periodic-loop render started on `studio1` after preflight diagnostics passed:
+
+```text
+pid: 49384
+log: /Users/akio/VisualizingLQCD-yitp-local-render/logs/studio-render-20260509-211006.log
+preflight_log: /Users/akio/VisualizingLQCD-yitp-local-render/logs/studio-render-preflight-20260509-211006.log
+output: /Users/akio/VisualizingLQCD-yitp-local-render/outputs/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4
+```
+
+- Periodic-loop render completed on `studio1`.
+- Final source MP4:
+  - `384` frames
+  - `7` fps
+  - duration about `54.86` seconds
+  - `nloops=6`
+  - `camera_orbit_turns=1.0`
+- The GIF was regenerated from this MP4 at the same `7` fps, without dropping
+  every other frame from a higher-fps source.
+- Local review artifacts:
+
+```text
+/private/tmp/VisualizingLQCD-32x64-studio/view.html
+/private/tmp/VisualizingLQCD-32x64-studio/loop-boundary-periodic-frames.jpg
+/private/tmp/VisualizingLQCD-32x64-studio/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4
+/private/tmp/VisualizingLQCD-32x64-studio/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif
+```
+
+Smoothness correction:
+
+- The `384`-frame, `7` fps periodic-loop candidate preserved both periodicities,
+  but the GIF looked too large and the motion felt choppy/sluggish.
+- Do not change the playback speed. Instead, keep `nloops=6` and the same
+  about-`54.86` second duration, but render at `14` fps with
+  `slice_hold_frames=2`.
+- This makes:
+
+```text
+camera_orbit_turns: 1.0
+nloops: 6
+framerate: 14
+slice_hold_frames: 2
+figure_size: 480 x 480
+frames: 64 * 6 * 2 = 768
+duration: about 54.9 seconds
+```
+
+- The Euclidean fourth-direction slice cadence stays the same as the `7` fps
+  candidate because each slice is held for two rendered frames, while the camera
+  gets twice as many angular samples.
+- README display width and GIF conversion defaults were reduced to `200` px.
+- Source rendering for README media should use `figure_size=(480, 480)` instead
+  of the default `800 x 800`, because the final GIF is displayed at `200` px.
+- A first full GLMakie `768`-frame render was tried on `studio1` at the old
+  `800 x 800` source size, but the progress estimate stayed around
+  `6.3 s/frame` early in the run, implying roughly `80` minutes. It was stopped
+  before completion.
+- A short local preview was generated instead by motion-interpolating the
+  existing periodic `7` fps source to `14` fps at `240` px, keeping the playback
+  speed unchanged:
+
+```text
+/private/tmp/VisualizingLQCD-32x64-studio/view-smooth-preview.html
+/private/tmp/VisualizingLQCD-32x64-studio/smooth-14fps-240-preview.mp4
+```
+
+- This is only a visual check. If the interpolation looks acceptable, produce
+  the full README GIF/MP4 from the existing periodic source. If interpolation
+  looks physically/visually suspicious, schedule the real `768`-frame GLMakie
+  render as a longer `studio1` job and keep the user informed.
+- The real `768`-frame GLMakie render was then rerun on `studio1` at
+  `480 x 480`. It completed:
+
+```text
+machine: studio1
+workdir: /Users/akio/VisualizingLQCD-yitp-local-render
+log: /Users/akio/VisualizingLQCD-yitp-local-render/logs/studio-render-20260509-221340.log
+render time: 13:26
+mp4 frames: 768
+mp4 fps: 14
+mp4 duration: 54.857143 s
+mp4 size: about 12M
+gif width: 200 px
+gif frames: 768
+gif fps: 14
+gif size: about 12M
+```
+
+- Local review artifacts:
+
+```text
+/private/tmp/VisualizingLQCD-32x64-studio/view.html
+/private/tmp/VisualizingLQCD-32x64-studio/contact-fullturn-real14.jpg
+/private/tmp/VisualizingLQCD-32x64-studio/loop-boundary-real14.jpg
+```
 
 ## Current branch state
+
+- Current active branch for the YITP sample workflow: `codex/yitp-sample-gif`.
+- `origin/main` includes PR16 (`codex/render-progress`) as of commit
+  `58b80f1`.
+- A local untracked root `Manifest.toml` exists. Keep it out of unrelated
+  commits unless the project deliberately decides to track a manifest.
+
+## YITP Sample GIF Workflow
+
+Goal:
+
+- Generate a larger sample configuration without running heavy work locally.
+- Current target: `32 x 32 x 32 x 64`, `beta=6.0`, `NC=3`.
+- The YITP attempt used 20 heatbath sweeps and 200 gradient-flow steps.
+- The studio1 40-sweep, 200-flow configuration was generated as a conservative
+  fallback while the YITP/studio1 read-path failure was unresolved. Later
+  diagnostics indicate the current checksum-matched YITP file is also sane, but
+  the README media in this branch use the studio1-generated
+  `Conf32323264beta6.0-gf05hb40flow200.ildg`.
+- Work directory on YITP:
+
+```text
+/sc/home/akio/VisualizingLQCD-yitp-sample
+```
+
+Scripts live under:
+
+```text
+scripts/yitp_sample/
+```
+
+Current YITP findings:
+
+- Configuration generation can run on CPU queues.
+- CPU queues (`S`, `DEBUG`) had idle nodes during the 2026-05-09 check.
+- Production generation job `9491` completed on `S` partition.
+  - Output:
+    `/sc/home/akio/VisualizingLQCD-yitp-sample/outputs/Conf32323264beta6.0.ildg`
+  - Size: about `1.2G`.
+  - Metadata:
+    `/sc/home/akio/VisualizingLQCD-yitp-sample/outputs/Conf32323264beta6.0.ildg.metadata.txt`
+- CPU `DEBUG` GLMakie smoke job `9501` failed because `GLMakie`/`GLFW` requires
+  `DISPLAY`.
+- CPU display probe job `9507` showed that CPU compute nodes do not expose
+  `Xorg`, `Xwayland`, `Xvfb`, `xvfb-run`, or `vglrun`; only `glxinfo` was
+  present and it failed without `DISPLAY`.
+- Front/login nodes expose `Xorg` and `vglrun`, but `Xorg` cannot be started
+  from a normal SSH session (`Only console users are allowed to run the X
+  server`).
+- GPU GLMakie smoke job `9494` is pending.
+- GPU display probe job `9509` is pending and should determine whether
+  `DISPLAY=:0`, VirtualGL, or a GPU-node X server path exists.
+- YITP does not expose a system `ffmpeg` command in the tested shell
+  environment. GIF conversion should use `scripts/yitp_sample/convert_mp4_to_gif.jl`,
+  which tries `ffmpeg` first and then `FFMPEG_jll`.
+- Local-machine fallback was tested on `studio1`.
+  - `studio1` has enough disk and memory for rendering.
+  - `juliaup update` was run there with user permission; installed channels are
+    `1.10.11`, `1.11.9`, and `1.12.6`.
+  - Regular `Pkg.status()` works for `+1.10`, `+1.11`, and `+1.12`.
+  - A fresh scratch workdir exists at
+    `/Users/akio/VisualizingLQCD-yitp-local-render`.
+  - The generated YITP configuration was copied there and byte size matched
+    YITP: `1207959696` bytes.
+  - `GLMakie` PNG smoke succeeded in that workdir.
+  - The initial full render attempt failed before heavy rendering because the
+    scratch copy still had a Julia `1.12` `Manifest.toml` while render was run
+    with Julia `1.10`.
+  - Fix: `scripts/yitp_sample/studio_prepare_render_env.sh` backs up a
+    mismatched scratch manifest, creates a Julia `1.10` manifest in the scratch
+    workdir, and uses a scratch depot plus Julia system depots. It does not
+    write to the global Julia environments.
+  - `scripts/yitp_sample/studio_render_large_sample.sh` then ran successfully
+    on `studio1`, but that first `32^3 x 64` movie was rejected as visually
+    invalid.
+    - Output:
+      `/Users/akio/VisualizingLQCD-yitp-local-render/outputs/plaquette_3D_contour_animation32323264beta6.0.mp4`
+    - Render time: about `19:20` for `64` frames.
+    - Output size: about `2.0M`.
+  - Diagnosis of that invalid `32^3 x 64` render/read attempt:
+    - rendered frames became empty grids or full box surfaces;
+    - metadata had `body_level=1.0` and `color_range=[1.0, 1.0]`;
+    - action-density diagnostics showed many slices with all values exactly
+      `1.0` (`slice4=32,48,64`), so that copied input/read path was not usable
+      as a visualization sample.
+  - Superseding investigation:
+    - the current YITP file
+      `/sc/home/akio/VisualizingLQCD-yitp-sample/outputs/Conf32323264beta6.0.ildg`
+      has sha256
+      `9bc6165178f48b7b49d678d807eb2293fb04bc245fd8aef61e17b81164b716d0`;
+    - a fresh local copy at
+      `/private/tmp/Conf32323264beta6.0-yitp-9731.ildg` had the same checksum;
+    - YITP `binary` and `ildg` diagnostics, plus local Gaugefields v0.5.18
+      `binary` and `ildg` diagnostics, all reported `frac_eq1=0.0` and
+      `frac_ge099=0.0`;
+    - the old failure should therefore be treated as a stale copy, stale
+      workdir, script/environment mix-up, or missing-preflight problem unless
+      the original bad studio1 copy can be reproduced with a checksum.
+  - The known Dropbox/local sample
+    `/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg` was
+    copied to `studio1` and diagnosed as sane:
+    - no `frac_eq1` or `frac_ge099` contamination;
+    - action-density quantiles around `1e-3`, not `1.0`.
+  - The README sample movie was regenerated from that known-good `24^3 x 32`
+    configuration on `studio1`.
+    - Candidate output:
+      `/Users/akio/VisualizingLQCD-yitp-local-render/outputs/plaquette_3D_contour_animation24242432beta6.0-candidate.mp4`
+    - Render time: about `2:45` for `128` frames.
+    - Metadata summary:
+      `body_level=0.001001471068063763`,
+      `color_range=[0.0009528263640544168, 0.002317033445038125]`.
+  - The corrected MP4 was copied back to the repository root and converted
+    locally to a `360px` wide GIF using the existing local `ffmpeg`.
+    - `plaquette_3D_contour_animation24242432beta6.0.mp4`
+    - `plaquette_3D_contour_animation24242432beta6.0.gif`
+    - `test/plaquette_3D_contour_animation24242432beta6.0.gif`
+  - No `studio1` render process was left running after that completed
+    `24^3 x 32` README-sample render. This statement does not refer to the
+    later active `32^3 x 64` corrective generation job noted at the top of this
+    memo.
+
+Useful local status command:
+
+```bash
+scripts/yitp_sample/check_remote_status.sh
+```
+
+Policy:
+
+- Do not run heavy generation, GLMakie rendering, or GIF conversion locally.
+- If local fallback is explicitly approved, use a separate scratch directory and
+  isolated depot, preferably on `studio1`, and record the environment decisions
+  in this memo.
+- Local work on the primary laptop should stay limited to script edits, SSH
+  status checks, rsync, lightweight inspection, and small media conversion.
+
+## Older branch state notes
 
 - `origin/main` currently contains PR1 through PR7 plus the status-memo PR.
 - `codex/pr7-raw-high-levels` is merged on `origin/main`.
@@ -22,10 +528,6 @@ Last updated during the PR10 action-density blob trials.
   - Adds an opt-in plaquette thermal render style.
   - Uses dark theme plus cyan/turquoise/yellow/red colors for raw-high
     plaquette deviation.
-- A local untracked `Manifest.toml` exists from dependency resolution. Keep it
-  out of unrelated commits unless the project deliberately decides to track a
-  manifest.
-
 ## PR History
 
 ### PR1: current defaults
@@ -1093,3 +1595,43 @@ Validation:
   passed: `VisualizingLQCD.jl | 56 pass`.
 - The direct test run showed `Rendering frames...` progress during the
   GLMakie record phase.
+
+## 2026-05-09 YITP Large Sample Generation
+
+Goal: create a larger README/sample GIF source configuration with a wider
+spatial volume and doubled Euclidean fourth direction compared with the current
+`24^3 x 32` sample.
+
+Target:
+
+- Lattice: `32 x 32 x 32 x 64`.
+- `beta=6.0`, `NC=3`.
+- Heatbath sweeps: `20`.
+- Gradient-flow steps: `200`.
+- Output configuration on YITP:
+  `/sc/home/akio/VisualizingLQCD-yitp-sample/outputs/Conf32323264beta6.0.ildg`.
+
+Execution notes:
+
+- YITP front can load Julia `1.12.4`, but the existing Gaugefields environment
+  is Julia `1.11` based. Use
+  `/home/soryushi/akio/julia-1.11.2/bin/julia` with
+  `/home/soryushi/akio/.julia/environments/v1.11` for configuration
+  generation.
+- Do not run the heavy configuration generation or rendering locally. Keep the
+  long work on YITP; local work should be limited to script edits, SSH
+  monitoring, and final artifact inspection.
+- YITP front cannot currently fetch packages from `pkg.julialang.org`. Package
+  installation should be done on the YITP login gate alias `yitp-mercury`
+  (`venus1`/`venus2`), using the shared project under `/sc/home/akio`.
+- `GLMakie`/`Makie` can be installed from `yitp-mercury`, but front/login nodes
+  have no `DISPLAY`, so `GLMakie` precompile fails there with
+  `X11: The DISPLAY environment variable is missing`.
+- Rendering on YITP therefore needs a GPU/graphics-capable batch job or another
+  headless rendering strategy; do not fall back to local rendering without an
+  explicit decision.
+- DEBUG smoke job `9490` succeeded for a `4^4` configuration.
+- Production SLURM job `9491` was submitted to partition `S` from
+  `/sc/home/akio/VisualizingLQCD-yitp-sample` and started on `scn35`.
+- GPU GLMakie smoke job `9494` was submitted to partition `GPU` to check
+  whether rendering can run on YITP without using the local machine.

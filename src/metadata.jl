@@ -12,14 +12,22 @@ function default_frame_mode(camera_motion::Symbol)
     return camera_motion == CAMERA_MOTION_ORBIT ? FRAME_MODE_FIXED : CURRENT_FRAME_MODE
 end
 
+function validate_slice_hold_frames(slice_hold_frames)
+    slice_hold_frames isa Integer || throw(ArgumentError("slice_hold_frames should be an integer"))
+    slice_hold_frames > 0 || throw(ArgumentError("slice_hold_frames should be positive"))
+    return slice_hold_frames
+end
+
 function slice4_for_frame(frame::Integer, NT::Integer;
-    frame_mode=FRAME_MODE_SEQUENCE, fixed_slice4=CURRENT_FIXED_SLICE4)::Int
+    frame_mode=FRAME_MODE_SEQUENCE, fixed_slice4=CURRENT_FIXED_SLICE4,
+    slice_hold_frames=CURRENT_SLICE_HOLD_FRAMES)::Int
 
     frame > 0 || throw(ArgumentError("frame should be positive"))
     NT > 0 || throw(ArgumentError("NT should be positive"))
     mode = validate_frame_mode(frame_mode)
     if mode == FRAME_MODE_SEQUENCE
-        return (frame - 1) % NT + 1
+        hold = validate_slice_hold_frames(slice_hold_frames)
+        return div(frame - 1, hold) % NT + 1
     elseif mode == FRAME_MODE_FIXED
         fixed_slice4 isa Integer || throw(ArgumentError("fixed_slice4 should be an integer"))
         1 <= fixed_slice4 <= NT || throw(ArgumentError("fixed_slice4 should be in 1:NT"))
@@ -29,16 +37,43 @@ function slice4_for_frame(frame::Integer, NT::Integer;
     end
 end
 
-function frame_slice_map(NT::Integer; nloops::Integer=CURRENT_MOVIE_NLOOPS,
-    frame_mode=FRAME_MODE_SEQUENCE, fixed_slice4=CURRENT_FIXED_SLICE4)
+function total_movie_frames(NT::Integer, nloops::Integer;
+    frame_mode=FRAME_MODE_SEQUENCE, slice_hold_frames=CURRENT_SLICE_HOLD_FRAMES)
 
     NT > 0 || throw(ArgumentError("NT should be positive"))
     nloops > 0 || throw(ArgumentError("nloops should be positive"))
+    mode = validate_frame_mode(frame_mode)
+    if mode == FRAME_MODE_SEQUENCE
+        return NT * nloops * validate_slice_hold_frames(slice_hold_frames)
+    elseif mode == FRAME_MODE_FIXED
+        return NT * nloops
+    else
+        throw(ArgumentError("unsupported frame_mode: $mode"))
+    end
+end
+
+function movie_duration_seconds(NT::Integer, nloops::Integer, framerate::Real;
+    frame_mode=FRAME_MODE_SEQUENCE, slice_hold_frames=CURRENT_SLICE_HOLD_FRAMES)
+
+    framerate > 0 || throw(ArgumentError("framerate should be positive"))
+    return total_movie_frames(NT, nloops;
+        frame_mode=frame_mode, slice_hold_frames=slice_hold_frames) / framerate
+end
+
+function frame_slice_map(NT::Integer; nloops::Integer=CURRENT_MOVIE_NLOOPS,
+    frame_mode=FRAME_MODE_SEQUENCE, fixed_slice4=CURRENT_FIXED_SLICE4,
+    slice_hold_frames=CURRENT_SLICE_HOLD_FRAMES)
+
+    NT > 0 || throw(ArgumentError("NT should be positive"))
+    nloops > 0 || throw(ArgumentError("nloops should be positive"))
+    t_end = total_movie_frames(NT, nloops;
+        frame_mode=frame_mode, slice_hold_frames=slice_hold_frames)
     return [Dict(
                 "frame" => i,
                 "slice4" => slice4_for_frame(i, NT;
-                    frame_mode=frame_mode, fixed_slice4=fixed_slice4),
-            ) for i in 1:(NT * nloops)]
+                    frame_mode=frame_mode, fixed_slice4=fixed_slice4,
+                    slice_hold_frames=slice_hold_frames),
+            ) for i in 1:t_end]
 end
 
 function frame_sequence_description(frame_mode::Symbol)
@@ -52,11 +87,13 @@ function frame_sequence_description(frame_mode::Symbol)
     end
 end
 
-function frame_mode_metadata(frame_mode::Symbol, fixed_slice4)
+function frame_mode_metadata(frame_mode::Symbol, fixed_slice4, slice_hold_frames)
     mode = validate_frame_mode(frame_mode)
     return Dict(
         "frame_mode" => String(mode),
         "fixed_slice4" => mode == FRAME_MODE_FIXED ? fixed_slice4 : nothing,
+        "slice_hold_frames" => mode == FRAME_MODE_SEQUENCE ?
+                               validate_slice_hold_frames(slice_hold_frames) : nothing,
     )
 end
 
@@ -75,8 +112,10 @@ function animation_metadata(;
     framerate,
     nloops,
     title,
+    figure_size=CURRENT_FIGURE_SIZE,
     frame_mode=FRAME_MODE_SEQUENCE,
     fixed_slice4=CURRENT_FIXED_SLICE4,
+    slice_hold_frames=CURRENT_SLICE_HOLD_FRAMES,
     display_transform_info=display_transform_metadata(),
     level_selection_info=level_selection_metadata(levels, level_summary),
     render_style_info=Dict{String,Any}(),
@@ -86,12 +125,21 @@ function animation_metadata(;
     render_cache_info=Dict{String,Any}(),
     observable_info=plaquette_plane_observable_metadata(),
 )
+    frame_map = frame_slice_map(lattice_size[4];
+        nloops=nloops, frame_mode=frame_mode, fixed_slice4=fixed_slice4,
+        slice_hold_frames=slice_hold_frames)
+    frame_count = length(frame_map)
+    framerate > 0 || throw(ArgumentError("framerate should be positive"))
+    duration_seconds = frame_count / framerate
     render_info = merge(
         Dict(
             "output" => String(videoname),
             "metadata_output" => String(metadata_filename),
             "framerate" => framerate,
             "nloops" => nloops,
+            "frame_count" => frame_count,
+            "duration_seconds" => duration_seconds,
+            "figure_size" => collect(validate_figure_size(figure_size)),
             "title" => title,
         ),
         render_theme_info,
@@ -117,9 +165,8 @@ function animation_metadata(;
         "observable" => observable_info,
         "display_transform" => display_transform_info,
         "level_selection" => level_selection_info,
-        "frame_selection" => frame_mode_metadata(frame_mode, fixed_slice4),
-        "frame_map" => frame_slice_map(lattice_size[4];
-            nloops=nloops, frame_mode=frame_mode, fixed_slice4=fixed_slice4),
+        "frame_selection" => frame_mode_metadata(frame_mode, fixed_slice4, slice_hold_frames),
+        "frame_map" => frame_map,
         "flow" => Dict("steps" => flow_steps),
         "render" => render_info,
     )
