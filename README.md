@@ -3,7 +3,7 @@
 - 2025/01/11
 - A. Tomiya akio@yukawa.kyoto-u.ac.jp 
 
-<img src="plaquette_3D_contour_animation24242432beta6.0.gif" alt="QCD vacuum" width="420">
+<img src="plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif" alt="QCD vacuum" width="200">
 
 [Another example (Youtube)](http://youtube.com/shorts/nscMhDamzfg)
 
@@ -64,11 +64,9 @@ create_animation(
 )
 ```
 
-To rotate the camera during the movie, use `camera_motion=:orbit`. By default,
-one orbit follows the timing of the included rotated sample movie
-(`640` frames at `14` fps, about `45.7` seconds). Orbit movies keep one
-fourth-direction slice fixed by default, so the shape is not changed by the
-slice sequence while the camera rotates. It also uses `viewmode=:fit` and
+To rotate the camera during the movie, use `camera_motion=:orbit`. Orbit movies
+keep one fourth-direction slice fixed by default, so the shape is not changed by
+the slice sequence while the camera rotates. It also uses `viewmode=:fit` and
 orthographic projection by default, avoiding the apparent zoom from Makie's
 default `Axis3` fit-zoom behavior. Static movies keep the existing default
 framerate; orbit movies use `14` fps unless `framerate` is passed explicitly.
@@ -88,6 +86,31 @@ To rotate while stepping through fourth-direction slices, pass
 `frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`.
 Repeated action-density meshes are cached by slice by default; pass
 `cache_render_slices=false` to disable this.
+
+The bundled sample movie uses the periodic fourth-direction sequence and one
+camera turn:
+
+```julia
+create_animation(
+    NX, NY, NZ, NT, NC, videoname;
+    beta=β,
+    filename=confname,
+    camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT,
+    frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
+    camera_orbit_turns=1,
+    nloops=6,
+    framerate=14,
+    slice_hold_frames=2,
+    figure_size=(480, 480),
+)
+```
+
+For the `32^3 x 64` sample this gives `768` frames: all `64` Euclidean
+fourth-direction slices are shown six times, each slice is held for two frames,
+and the camera completes one full turn. This keeps the playback speed of the
+previous `384`-frame version while making the camera motion smoother. The
+source movie is rendered at `480 x 480` and the README GIF is displayed at
+`200` px.
 
 ## Visualization from scratch
 
@@ -122,8 +145,8 @@ main()
 README.md : This file 
 src
 test
-plaquette_3D_contour_animation24242432beta6.0.mp4 : sample action-density orbit video
-plaquette_3D_contour_animation24242432beta6.0.gif : sample action-density orbit video
+plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4 : sample action-density slice-sequence orbit video
+plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif : sample action-density slice-sequence orbit video
 ```
 
 

@@ -3,7 +3,7 @@
 - 2025/01/11
 - A. Tomiya akio@yukawa.kyoto-u.ac.jp 
 
-<img src="plaquette_3D_contour_animation24242432beta6.0.gif" alt="QCD vacuum" width="420">
+<img src="plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif" alt="QCD vacuum" width="200">
 
 [Another example (Youtube)](http://youtube.com/shorts/nscMhDamzfg)
 
@@ -51,8 +51,12 @@ One can use a sample [configuration file](https://www.dropbox.com/scl/fi/ujkmaes
 
 To rotate the camera during the movie, pass
 `camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT`. The default orbit timing
-matches the included rotated sample movie, about 45.7 seconds per full turn at
-14 fps, and keeps one fourth-direction slice fixed by default.
+is about 45.7 seconds per full turn at 14 fps, and keeps one fourth-direction
+slice fixed by default. The bundled sample GIF instead uses
+`frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`, `nloops=6`, `framerate=14`,
+and `slice_hold_frames=2`, so the `64` Euclidean fourth-direction slices loop
+exactly six times while the camera completes one full turn. The README media are
+rendered smaller for display.
 
 ## Visualization from scratch
 
@@ -68,8 +72,8 @@ configuration_generation.jl : Configuration generation with the heatbath algorit
 constants.jl : constants are defined
 header.jl : packages 
 install_packages.jl : package installer
-plaquette_3D_contour_animation24242432beta6.0.mp4 : sample action-density orbit video
-plaquette_3D_contour_animation24242432beta6.0.gif : sample action-density orbit video
+plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4 : sample action-density slice-sequence orbit video
+plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif : sample action-density slice-sequence orbit video
 visualization.jl : A code for visulalization
 ```
 

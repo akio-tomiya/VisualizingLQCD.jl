@@ -218,6 +218,16 @@ function render_progress_metadata(show_render_progress::Bool)
     )
 end
 
+function validate_figure_size(figure_size)
+    length(figure_size) == 2 || throw(ArgumentError("figure_size should have two entries"))
+    width, height = figure_size
+    width isa Integer || throw(ArgumentError("figure_size width should be an integer"))
+    height isa Integer || throw(ArgumentError("figure_size height should be an integer"))
+    width > 0 || throw(ArgumentError("figure_size width should be positive"))
+    height > 0 || throw(ArgumentError("figure_size height should be positive"))
+    return (width, height)
+end
+
 function validate_camera_motion(camera_motion::Symbol)
     if camera_motion == CAMERA_MOTION_STATIC || camera_motion == CAMERA_MOTION_ORBIT
         return camera_motion
@@ -267,14 +277,19 @@ function camera_settings(render_kind::Symbol; camera_motion=CURRENT_CAMERA_MOTIO
     )
 end
 
-function default_movie_nloops(NT::Integer, framerate::Real, settings)
+function default_movie_nloops(NT::Integer, framerate::Real, settings;
+    frame_mode=FRAME_MODE_SEQUENCE, slice_hold_frames=CURRENT_SLICE_HOLD_FRAMES)
+
     NT > 0 || throw(ArgumentError("NT should be positive"))
     framerate > 0 || throw(ArgumentError("framerate should be positive"))
     if settings.motion != CAMERA_MOTION_ORBIT
         return CURRENT_MOVIE_NLOOPS
     end
     target_frames = abs(settings.orbit_turns) * settings.orbit_seconds * framerate
-    return max(CURRENT_MOVIE_NLOOPS, ceil(Int, target_frames / NT))
+    mode = validate_frame_mode(frame_mode)
+    frames_per_loop = mode == FRAME_MODE_SEQUENCE ?
+                      NT * validate_slice_hold_frames(slice_hold_frames) : NT
+    return max(CURRENT_MOVIE_NLOOPS, ceil(Int, target_frames / frames_per_loop))
 end
 
 function camera_azimuth_for_frame(settings, frame::Integer, total_frames::Integer)
