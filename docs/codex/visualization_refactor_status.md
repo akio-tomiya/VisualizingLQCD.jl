@@ -4,7 +4,50 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the consistency-test and PR-prep pass.
+Last updated on 2026-05-10 during the topological-density observable pass.
+
+## Active note: 2026-05-10 topological-density observable entry
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-density-entry`.
+- Starting point: PR #17 (`codex/yitp-sample-gif`) was merged, then `main` was
+  fast-forwarded to `e09ba0a`.
+- Goal for this small PR: add topological charge density as an observable-level
+  entry point without changing the default renderer or README media.
+- Scope:
+  - add clover-method topological charge density computation following the
+    Gaugefields.jl topological charge example structure;
+  - record signed-density metadata separately from plaquette/action-density
+    metadata;
+  - add lightweight tests on epsilon signs, method validation, loopset shape,
+    metadata, and a cold `2^4` gauge field whose density should be zero.
+- Implementation note: current Gaugefields.jl evaluates a vector of Wilson
+  loops with four auxiliary temp gauge fields, so this observable uses `5`
+  total temp fields (`1` output plus `4` auxiliaries).
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 111 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass, 111 tests, render smoke skipped
+
+git diff --check
+result: pass
+```
+
+- Explicitly deferred:
+  - diverging positive/negative rendering;
+  - topological-density movie presets;
+  - instanton/SU(2)-in-SU(3) fixtures, which remain a Gaugefields.jl-side
+    thread/project before they are used here as validation data.
 
 ## Active note: 2026-05-10 consistency tests
 
