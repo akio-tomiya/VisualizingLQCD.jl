@@ -60,6 +60,38 @@ result: pass
   signed topological-density movies/stills and tune positive/negative color
   levels before moving to Gaugefields.jl-generated SU(2) gauge-field
   instantons.
+- Follow-up in the same branch before merge:
+  - adjusted `signed_symmetric_levels` so one-sign density fields only request
+    contour levels for the sign actually present in the data;
+  - added `scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl`,
+    which renders single-plus, single-minus, and DIGA `+-` scalar fixtures to
+    PNG/MP4 plus a local HTML review page;
+  - local smoke output:
+
+```text
+/private/tmp/VisualizingLQCD-su2-instanton-fixtures/view.html
+/private/tmp/VisualizingLQCD-su2-instanton-fixtures/single-plus-centered.mp4
+/private/tmp/VisualizingLQCD-su2-instanton-fixtures/single-minus-centered.mp4
+/private/tmp/VisualizingLQCD-su2-instanton-fixtures/diga-plus-minus.mp4
+```
+
+  - representative `ffprobe` for `diga-plus-minus.mp4`: `1120x1120`,
+    `36` frames, `12` fps, duration `3.0` seconds.
+  - validation after this follow-up:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 146 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-su2-instanton-fixtures
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass, 146 tests, render smoke skipped
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-10 topological-density signed rendering
 

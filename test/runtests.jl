@@ -169,6 +169,10 @@ end
         quantiles=(0.0, 1.0)) == (1.0, 4.0)
     @test VisualizingLQCD.signed_symmetric_levels([-4.0, -2.0, 0.0, 3.0];
         quantiles=(0.0, 1.0)) == [-4.0, -2.0, 2.0, 4.0]
+    @test VisualizingLQCD.signed_symmetric_levels([0.0, 2.0, 4.0];
+        quantiles=(0.0, 1.0)) == [2.0, 4.0]
+    @test VisualizingLQCD.signed_symmetric_levels([-4.0, -2.0, 0.0];
+        quantiles=(0.0, 1.0)) == [-4.0, -2.0]
     @test VisualizingLQCD.signed_symmetric_color_range([-4.0, -2.0, 0.0, 3.0];
         quantile_level=1.0) == (-4.0, 4.0)
     @test_throws ArgumentError VisualizingLQCD.signed_symmetric_levels([0.0, 0.0])
