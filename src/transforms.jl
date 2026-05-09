@@ -33,3 +33,13 @@ function raw_display_transform_metadata()
         "raw_focus_for_upper_levels" => raw_high_focus_for_upper_levels(),
     )
 end
+
+function topological_charge_display_transform_metadata()
+    return Dict(
+        "kind" => "identity",
+        "formula" => "q",
+        "inverse_formula" => "level",
+        "epsilon" => 0.0,
+        "raw_focus_for_upper_levels" => "positive_and_negative_topological_charge_density",
+    )
+end

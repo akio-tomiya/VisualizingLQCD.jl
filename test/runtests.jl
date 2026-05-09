@@ -148,6 +148,9 @@ end
         VisualizingLQCD.LEVEL_TARGET_ACTION_DENSITY_HIGH) ==
           VisualizingLQCD.RENDER_STYLE_ACTION_DENSITY_BLOB
     @test VisualizingLQCD.default_render_style_for_level_target(
+        VisualizingLQCD.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY) ==
+          VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED
+    @test VisualizingLQCD.default_render_style_for_level_target(
         VisualizingLQCD.LEVEL_TARGET_LEGACY_NEGLOG_HIGH) ==
           VisualizingLQCD.RENDER_STYLE_CURRENT
 
@@ -164,6 +167,11 @@ end
         quantiles=(0.0, 1.0)) == [1.0, 4.0]
     @test VisualizingLQCD.raw_high_color_range([1.0, 4.0, 2.0, 3.0];
         quantiles=(0.0, 1.0)) == (1.0, 4.0)
+    @test VisualizingLQCD.signed_symmetric_levels([-4.0, -2.0, 0.0, 3.0];
+        quantiles=(0.0, 1.0)) == [-4.0, -2.0, 2.0, 4.0]
+    @test VisualizingLQCD.signed_symmetric_color_range([-4.0, -2.0, 0.0, 3.0];
+        quantile_level=1.0) == (-4.0, 4.0)
+    @test_throws ArgumentError VisualizingLQCD.signed_symmetric_levels([0.0, 0.0])
 
     legacy_setup = VisualizingLQCD.plaquette_display_level_setup([1.0, 4.0, 2.0, 3.0])
     @test legacy_setup.render_kind == :contour
@@ -196,10 +204,15 @@ end
     @test VisualizingLQCD.effective_render_theme(
         VisualizingLQCD.RENDER_STYLE_ACTION_DENSITY_BLOB, nothing) ==
           VisualizingLQCD.RENDER_THEME_DARK
+    @test VisualizingLQCD.effective_render_theme(
+        VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED, nothing) ==
+          VisualizingLQCD.RENDER_THEME_DARK
 
     @test VisualizingLQCD.transform_field_neglog([0.0, 1.0]) ≈
           [VisualizingLQCD.display_transform_neglog(0.0),
            VisualizingLQCD.display_transform_neglog(1.0)]
+    @test VisualizingLQCD.topological_charge_display_transform_metadata()["raw_focus_for_upper_levels"] ==
+          "positive_and_negative_topological_charge_density"
     action_setup = VisualizingLQCD.action_density_blob_display_setup(
         reshape(collect(1.0:16.0), 2, 2, 2, 2))
     @test action_setup.render_kind == :mesh
@@ -216,6 +229,20 @@ end
     @test action_geometry.info.vertices > 0
     @test action_geometry.info.faces > 0
     @test length(action_geometry.colors) == action_geometry.info.vertices
+
+    topological_setup = VisualizingLQCD.topological_charge_display_level_setup(
+        reshape([-4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0], 2, 2, 2, 1);
+        level_quantiles=(0.0, 1.0),
+        color_quantile=1.0)
+    @test topological_setup.render_kind == :contour
+    @test topological_setup.levels == [-4.0, -1.0, 1.0, 4.0]
+    @test topological_setup.display_transform_info["raw_focus_for_upper_levels"] ==
+          "positive_and_negative_topological_charge_density"
+    @test topological_setup.observable_info["kind"] == "topological_charge_density"
+    @test topological_setup.level_selection_info["level_target"] ==
+          String(VisualizingLQCD.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY)
+    @test topological_setup.render_style_info["render_style"] == "topological_charge_signed"
+    @test topological_setup.render_style_info["color_range"] == [-4.0, 4.0]
 end
 
 @testset "Topological charge density contracts" begin
