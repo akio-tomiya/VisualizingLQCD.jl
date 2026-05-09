@@ -307,6 +307,20 @@ end
     @test boundary_diagnostics["total_charge"] ≈ 1.0
     @test boundary_diagnostics["max"]["index"] == [1, 1, 1, 1]
 
+    small_rho_density = VisualizingLQCD.su2_instanton_topological_density(lattice;
+        rho=1.2, center=center, charge_sign=1)
+    large_rho_density = VisualizingLQCD.su2_instanton_topological_density(lattice;
+        rho=3.0, center=center, charge_sign=1)
+    @test maximum(small_rho_density) > maximum(large_rho_density)
+    @test sum(small_rho_density) ≈ 1.0
+    @test sum(large_rho_density) ≈ 1.0
+
+    off_center_density = VisualizingLQCD.su2_instanton_topological_density(lattice;
+        rho=2.0, center=(8.5, 8.0, 8.0, 8.0), charge_sign=1)
+    @test sum(off_center_density) ≈ 1.0
+    @test VisualizingLQCD.topological_density_fixture_diagnostics(
+        off_center_density)["max"]["index"][1] in (8, 9)
+
     diga_pp = VisualizingLQCD.su2_diga_topological_density(lattice, [
         (rho=1.5, center=(5, 5, 5, 5), charge_sign=1),
         (rho=1.5, center=(12, 12, 12, 12), charge_sign=1),
@@ -323,6 +337,17 @@ end
     @test diga_pm_diagnostics["total_charge"] ≈ 0.0 atol = 1e-12
     @test diga_pm_diagnostics["max"]["value"] > 0.0
     @test diga_pm_diagnostics["min"]["value"] < 0.0
+
+    diga_three = VisualizingLQCD.su2_diga_topological_density(lattice, [
+        (rho=1.5, center=(5, 5, 5, 5), charge_sign=1),
+        (rho=2.0, center=(12, 5, 12, 8), charge_sign=1),
+        (rho=1.8, center=(12, 12, 12, 12), charge_sign=-1),
+    ])
+    diga_three_diagnostics =
+        VisualizingLQCD.topological_density_fixture_diagnostics(diga_three)
+    @test diga_three_diagnostics["total_charge"] ≈ 1.0
+    @test diga_three_diagnostics["positive_charge"] > 1.0
+    @test diga_three_diagnostics["negative_charge"] < 0.0
 
     setup = VisualizingLQCD.topological_charge_display_level_setup(diga_pm;
         level_quantiles=(0.90, 0.99),

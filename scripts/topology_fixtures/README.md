@@ -14,10 +14,17 @@ fields are available.
 with the signed topological-density contour style and writes a local HTML review
 page. It is intended as a visual smoke test, not a default unit test.
 
+The default smoke set is intentionally small. Use `--case-set debug` to add
+radius, off-center, spatial-boundary, same-sign DIGA, and three-lump checks.
+The display can also be tuned from the command line with `--level-quantiles`,
+`--color-quantile`, and `--alpha`.
+
 Run from the repository root:
 
 ```sh
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/diagnose_su2_instanton_fixtures.jl
 
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-su2-instanton-fixtures
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --case-set debug --level-quantiles 0.80,0.92,0.98 --color-quantile 0.999 --alpha 0.70 --output-dir /private/tmp/VisualizingLQCD-su2-instanton-fixtures-debug
 ```

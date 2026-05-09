@@ -1808,3 +1808,39 @@ Execution notes:
   `/sc/home/akio/VisualizingLQCD-yitp-sample` and started on `scn35`.
 - GPU GLMakie smoke job `9494` was submitted to partition `GPU` to check
   whether rendering can run on YITP without using the local machine.
+
+## 2026-05-10 SU(2) Scalar-Instanton Fixture PR
+
+Goal: build a deterministic calibration target for signed topological-density
+rendering before the Gaugefields.jl-side SU(3) embedded instanton solution is
+available.
+
+Scope:
+
+- This is a scalar-density fixture, not a lattice gauge-field solution.
+- The fixture samples the continuum SU(2) instanton topological density on a
+  periodic four-dimensional lattice and optionally normalizes each lump to its
+  requested integer charge.
+- The smoke renderer now has a small default case set and a `--case-set debug`
+  mode with radius, off-center, spatial-boundary, same-sign DIGA, plus/minus
+  DIGA, and three-lump checks.
+- The smoke renderer accepts `--level-quantiles`, `--color-quantile`, and
+  `--alpha` so level/color tuning can be compared without changing package
+  defaults.
+
+Validation:
+
+- Unit tests confirm charge normalization, sign handling, radius ordering,
+  off-center support, boundary peak placement, and multi-lump net charge.
+- `julia --project=. test/runtests.jl` passed.
+- `julia --project=. -e 'using Pkg; Pkg.test()'` passed.
+- `diagnose_su2_instanton_fixtures.jl` passed and reports normalized
+  one-lump charges and DIGA-like net charges.
+- Debug visual smoke output was generated at
+  `/private/tmp/VisualizingLQCD-su2-instanton-fixtures-debug/view.html`.
+
+Follow-up:
+
+- Use these scalar fixtures to tune signed topological-density defaults.
+- Later compare against a true SU(2)/SU(3) gauge-field instanton once that is
+  available from Gaugefields.jl work.
