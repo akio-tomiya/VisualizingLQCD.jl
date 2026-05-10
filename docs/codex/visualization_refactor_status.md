@@ -4,7 +4,39 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the `24^3 x 32` topological-density review pass.
+Last updated on 2026-05-10 during the visual-review UI comment-tag pass.
+
+## Active note: 2026-05-10 visual-review comment tags
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/visual-review-comment-tags`.
+- Starting point: PR #25 was merged into `main`.
+- User feedback:
+  - the `needs work` checkbox was being used as a workaround for neutral or
+    positive comments;
+  - reviewers need an obvious place to leave comments that are not fix requests.
+- Implemented:
+  - add `notable / promising` and `comment only` checkboxes to both topology
+    visual review pages;
+  - clarify the note placeholder: note-only rows are copied into the generated
+    review text;
+  - update `docs/codex/visual_review_io_methodology.md` so future visual review
+    pages do not force comments through `needs work`.
+- Validation:
+  - generated a fixture visual-review page with
+    `scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl`;
+  - generated a config visual-review page with
+    `scripts/topology_fixtures/render_topological_density_config_review.jl`;
+  - confirmed the generated HTML contains `notable / promising`,
+    `comment only`, and the note-only placeholder text;
+  - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl`;
+  - passed `/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'`.
 
 ## Active note: 2026-05-10 `24^3 x 32` topological-density config review
 

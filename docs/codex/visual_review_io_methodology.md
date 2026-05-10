@@ -67,6 +67,8 @@ Start with a small vocabulary. For visualization diagnostics, these are useful:
 visible
 not visible
 good
+notable / promising
+comment only
 shell/hollow
 needs work
 ```
@@ -83,6 +85,10 @@ physically suspicious
 ```
 
 Avoid making the checkbox list too long. Use the note field for rare cases.
+The note field should be valid on its own: reviewers must not have to mark
+`needs work` just to leave a neutral or positive comment. A `comment only`
+checkbox is useful when the reviewer wants to explicitly say that the row is
+included for discussion rather than as a requested fix.
 
 ## Generated Text
 
@@ -96,6 +102,7 @@ updated: 2026-05-10T12:34:56.000Z
 
 - balanced / single-plus-centered: visible, good
 - wide / single-plus-spatial-boundary: visible, shell/hollow | note: BC looks correct, but the cut surface reads as a shell.
+- volume / slice4=27: visible, notable / promising | note: visually good, but worth discussing.
 - core / single-plus-small-rho: not visible, needs work
 ```
 
