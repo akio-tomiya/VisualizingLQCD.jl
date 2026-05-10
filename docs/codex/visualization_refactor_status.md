@@ -4,8 +4,96 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the half-speed topological-density README
-sample candidate run.
+Last updated on 2026-05-11 after the remote half-speed topological-density
+README sample restore and visual review.
+
+## Active note: 2026-05-11 remote half-speed README sample review
+
+- Machine:
+  - render/storage: `studio1` (`Akios-Mac-Studio.local`);
+  - secondary staging/display probe: `yitpsc`;
+  - local disposable review copy: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/record-halfspeed-readme-review`.
+- Starting point: PR #37 and PR #38 were merged into `main`.
+- Goal:
+  - restore the half-speed README sample candidate after the previous
+    `/private/tmp` review directory disappeared;
+  - keep the regenerated artifacts in a durable remote location;
+  - record the user visual review result before deciding the README media PR.
+- Durable artifact location:
+
+```text
+studio1:/Users/akio/VisualizingLQCD-review-artifacts/topological-readme-halfspeed-20260511
+```
+
+- Local disposable review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-readme-halfspeed-remote-20260511/view.html
+```
+
+- Input configuration:
+
+```text
+/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+```
+
+- Input checksum:
+
+```text
+d09bcc6ff07bcd0beace6128c557a4173289f7c5eb07a33162b11396af44c4da
+```
+
+- Durable output files:
+  - `outputs/topological_density_noaxis_halfspeed.mp4`, about `2.9M`;
+  - `outputs/topological_density_noaxis_halfspeed.mp4.metadata.json`,
+    about `7.4K`;
+  - `outputs/topological_density_noaxis_halfspeed_300.gif`, about `2.2M`;
+  - `outputs/topological_density_noaxis_halfspeed_480.gif`, about `5.2M`;
+  - `outputs/view.html`;
+  - `RESTORE_MANIFEST.md`.
+- Render/restore notes:
+  - YITP GPU was reachable and idle, but GLMakie failed there because the GPU
+    node had no `DISPLAY`, no `Xvfb`, and no `vglrun`;
+  - `studio1` completed the GLMakie render using Julia `+1.12` and an isolated
+    depot under the artifact directory;
+  - `studio1` ffmpeg artifact failed because `libatomic.1.dylib` was missing,
+    so GIF conversion was done locally from the remote-rendered MP4 and copied
+    back to the durable output directory;
+  - render completed `128` frames in about `42` seconds on `studio1`.
+- Metadata check:
+  - `frame_count=128`;
+  - `duration_seconds=16.0`;
+  - `nloops=4`;
+  - `framerate=8`;
+  - `show_axis_labels=false`;
+  - `level_quantiles=[0.94,0.999]`;
+  - `color_method=local_absolute_topological_charge_density_quantile`.
+- User visual review pasted on 2026-05-11 JST:
+
+```text
+# VisualizingLQCD topological-density README half-speed visual check
+
+source: file:///private/tmp/VisualizingLQCD-topological-readme-halfspeed-remote-20260511/view.html
+session: 1778430600
+updated: 2026-05-10T16:56:54.926Z
+
+- no-axis / gif 300 half-speed: good, best README, rotation speed OK
+- no-axis / gif 480 half-speed: good
+```
+
+- Current interpretation:
+  - `no-axis / gif 300 half-speed` is the accepted README candidate;
+  - the next README media PR should use the durable `studio1` artifact, not a
+    `/private/tmp`-only copy;
+  - before final README replacement, run/record a topological-density oracle
+    check prompted by the Gaugefields.jl topological-charge-density bug report.
 
 ## Active note: 2026-05-10 half-speed topological-density README sample
 
