@@ -1844,3 +1844,27 @@ Follow-up:
 - Use these scalar fixtures to tune signed topological-density defaults.
 - Later compare against a true SU(2)/SU(3) gauge-field instanton once that is
   available from Gaugefields.jl work.
+
+## 2026-05-10 Topological-Density Style Preset PR
+
+Goal: prepare topological charge-density visual tuning without changing the
+current default movie behavior abruptly.
+
+Small change:
+
+- Add named style presets for signed topological-density contours:
+  `balanced`, `wide`, and `core`.
+- Keep `balanced` equal to the current package defaults.
+- Use `wide` as the smoke-script default because it exposes more of the
+  scalar-instanton fixture body for visual review.
+- Let callers override levels, color quantile, and alpha exactly as before.
+
+Validation:
+
+- Unit tests check that `balanced` preserves the old constants and that
+  `wide`/`core` select distinct level/alpha settings.
+- `julia --project=. test/runtests.jl` passed.
+- SU(2) instanton smoke stills were generated with each preset:
+  `/private/tmp/VisualizingLQCD-topology-style-balanced/view.html`,
+  `/private/tmp/VisualizingLQCD-topology-style-wide/view.html`, and
+  `/private/tmp/VisualizingLQCD-topology-style-core/view.html`.

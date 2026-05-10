@@ -125,6 +125,60 @@ function topological_charge_signed_contour_style(density;
     )
 end
 
+function validate_topological_charge_style_preset(style_preset::Symbol)
+    if style_preset in (
+        TOPOLOGICAL_CHARGE_STYLE_BALANCED,
+        TOPOLOGICAL_CHARGE_STYLE_WIDE,
+        TOPOLOGICAL_CHARGE_STYLE_CORE,
+    )
+        return style_preset
+    end
+    throw(ArgumentError("unsupported topological charge style preset: $style_preset"))
+end
+
+function validate_topological_charge_style_preset(style_preset)
+    style_preset isa Symbol ||
+        throw(ArgumentError("topological charge style preset should be a Symbol"))
+    return validate_topological_charge_style_preset(style_preset)
+end
+
+function topological_charge_style_preset_settings(style_preset::Symbol)
+    preset = validate_topological_charge_style_preset(style_preset)
+    if preset == TOPOLOGICAL_CHARGE_STYLE_BALANCED
+        return (
+            style_preset=preset,
+            level_quantiles=CURRENT_TOPOLOGICAL_CHARGE_LEVEL_QUANTILES,
+            color_quantile=CURRENT_TOPOLOGICAL_CHARGE_COLOR_QUANTILE,
+            colormap=CURRENT_TOPOLOGICAL_CHARGE_COLORMAP,
+            alpha=CURRENT_TOPOLOGICAL_CHARGE_ALPHA,
+            transparency=CURRENT_TOPOLOGICAL_CHARGE_TRANSPARENCY,
+        )
+    elseif preset == TOPOLOGICAL_CHARGE_STYLE_WIDE
+        return (
+            style_preset=preset,
+            level_quantiles=CURRENT_TOPOLOGICAL_CHARGE_WIDE_LEVEL_QUANTILES,
+            color_quantile=CURRENT_TOPOLOGICAL_CHARGE_WIDE_COLOR_QUANTILE,
+            colormap=CURRENT_TOPOLOGICAL_CHARGE_COLORMAP,
+            alpha=CURRENT_TOPOLOGICAL_CHARGE_WIDE_ALPHA,
+            transparency=CURRENT_TOPOLOGICAL_CHARGE_TRANSPARENCY,
+        )
+    else
+        return (
+            style_preset=preset,
+            level_quantiles=CURRENT_TOPOLOGICAL_CHARGE_CORE_LEVEL_QUANTILES,
+            color_quantile=CURRENT_TOPOLOGICAL_CHARGE_CORE_COLOR_QUANTILE,
+            colormap=CURRENT_TOPOLOGICAL_CHARGE_COLORMAP,
+            alpha=CURRENT_TOPOLOGICAL_CHARGE_CORE_ALPHA,
+            transparency=CURRENT_TOPOLOGICAL_CHARGE_TRANSPARENCY,
+        )
+    end
+end
+
+function topological_charge_style_preset_settings(style_preset)
+    return topological_charge_style_preset_settings(
+        validate_topological_charge_style_preset(style_preset))
+end
+
 function contour_plot_kwargs(style, levels)
     kwargs = Dict{Symbol,Any}(
         :levels => levels,

@@ -7,9 +7,11 @@ using Printf
 const DEFAULT_OUTPUT_DIR = "/private/tmp/VisualizingLQCD-su2-instanton-fixtures"
 const DEFAULT_FIXTURE_CASE_SET = "basic"
 const DEFAULT_FIXTURE_LATTICE = (24, 24, 24, 24)
-const DEFAULT_LEVEL_QUANTILES = (0.80, 0.92, 0.98)
-const DEFAULT_COLOR_QUANTILE = 0.999
-const DEFAULT_RENDER_ALPHA = 0.70
+const DEFAULT_STYLE_PRESET = VisualizingLQCD.TOPOLOGICAL_CHARGE_STYLE_WIDE
+
+function parse_style_preset(raw)
+    return VisualizingLQCD.validate_topological_charge_style_preset(Symbol(raw))
+end
 
 function parse_quantile_list(raw, option_name)
     values = Float64[]
@@ -35,9 +37,10 @@ function parse_args(args)
     framerate = 12
     render_movies = true
     case_set = DEFAULT_FIXTURE_CASE_SET
-    level_quantiles = DEFAULT_LEVEL_QUANTILES
-    color_quantile = DEFAULT_COLOR_QUANTILE
-    render_alpha = DEFAULT_RENDER_ALPHA
+    style_preset = DEFAULT_STYLE_PRESET
+    level_quantiles = nothing
+    color_quantile = nothing
+    render_alpha = nothing
     i = 1
     while i <= length(args)
         arg = args[i]
@@ -59,6 +62,10 @@ function parse_args(args)
             i += 1
             i <= length(args) || throw(ArgumentError("--case-set requires a value"))
             case_set = parse_case_set(args[i])
+        elseif arg == "--style-preset"
+            i += 1
+            i <= length(args) || throw(ArgumentError("--style-preset requires a value"))
+            style_preset = parse_style_preset(args[i])
         elseif arg == "--level-quantiles"
             i += 1
             i <= length(args) || throw(ArgumentError("--level-quantiles requires a value"))
@@ -80,9 +87,12 @@ function parse_args(args)
     end
     frames > 0 || throw(ArgumentError("--frames should be positive"))
     framerate > 0 || throw(ArgumentError("--framerate should be positive"))
+    preset_settings = VisualizingLQCD.topological_charge_style_preset_settings(style_preset)
     return (output_dir=output_dir, frames=frames, framerate=framerate,
-        render_movies=render_movies, case_set=case_set, level_quantiles=level_quantiles,
-        color_quantile=color_quantile, render_alpha=render_alpha)
+        render_movies=render_movies, case_set=case_set, style_preset=style_preset,
+        level_quantiles=something(level_quantiles, preset_settings.level_quantiles),
+        color_quantile=something(color_quantile, preset_settings.color_quantile),
+        render_alpha=something(render_alpha, preset_settings.alpha))
 end
 
 function instanton_case(name; lattice, rho, center, charge_sign, description)
@@ -185,6 +195,7 @@ end
 function display_options_metadata(options)
     return Dict(
         "case_set" => options.case_set,
+        "style_preset" => String(options.style_preset),
         "level_quantiles" => collect(options.level_quantiles),
         "color_quantile" => options.color_quantile,
         "render_alpha" => options.render_alpha,
@@ -224,6 +235,7 @@ function render_case(case, output_dir, options)
     density = case.density
     nx, ny, nz, _ = size(density)
     setup = VisualizingLQCD.topological_charge_display_level_setup(density;
+        style_preset=options.style_preset,
         level_quantiles=options.level_quantiles,
         color_quantile=options.color_quantile,
         render_alpha=options.render_alpha)
