@@ -121,15 +121,12 @@ end
 function resolve_render_options(options, style_preset;
     output_dir=options.output_dir, render_mode=options.render_mode)
 
-    preset_settings = VisualizingLQCD.topological_charge_style_preset_settings(style_preset)
     return (output_dir=output_dir, frames=options.frames, framerate=options.framerate,
         render_movies=options.render_movies, case_set=options.case_set,
         style_preset=style_preset, render_mode=render_mode,
-        level_quantiles=something(
-            options.level_quantiles_override, preset_settings.level_quantiles),
-        color_quantile=something(
-            options.color_quantile_override, preset_settings.color_quantile),
-        render_alpha=something(options.render_alpha_override, preset_settings.alpha))
+        level_quantiles=options.level_quantiles_override,
+        color_quantile=options.color_quantile_override,
+        render_alpha=options.render_alpha_override)
 end
 
 function instanton_case(name; lattice, rho, center, charge_sign, description)
@@ -234,7 +231,8 @@ function display_options_metadata(options)
         "case_set" => options.case_set,
         "style_preset" => String(options.style_preset),
         "render_mode" => String(options.render_mode),
-        "level_quantiles" => collect(options.level_quantiles),
+        "level_quantiles_override" => options.level_quantiles === nothing ?
+                                      nothing : collect(options.level_quantiles),
         "color_quantile" => options.color_quantile,
         "render_alpha" => options.render_alpha,
         "lattice_size" => collect(DEFAULT_FIXTURE_LATTICE),

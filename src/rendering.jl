@@ -140,12 +140,21 @@ function topological_charge_volume_color(color_tuple; alpha=nothing)
     return RGBAf(r, g, b, something(alpha, a))
 end
 
+function topological_charge_volume_color_range(body_level, color_abs_ceiling)
+    body_level === nothing && return nothing
+    return (body_level, max(body_level, color_abs_ceiling))
+end
+
+metadata_range(range) = range === nothing ? nothing : collect(range)
+
 function topological_charge_volume_style_metadata(;
     style_preset,
     positive_body_level,
     negative_body_level,
     level_quantiles,
     color_quantile,
+    positive_color_range,
+    negative_color_range,
     alpha,
     transparency,
 )
@@ -156,10 +165,22 @@ function topological_charge_volume_style_metadata(;
         "positive_body_level" => positive_body_level,
         "negative_body_level" => negative_body_level,
         "level_quantiles" => collect(level_quantiles),
-        "color_method" => "constant_sign_color",
+        "color_method" => "local_absolute_topological_charge_density_quantile",
+        "color_quantity" => "local_abs_topological_charge_density",
         "color_quantile" => color_quantile,
+        "positive_color_range" => metadata_range(positive_color_range),
+        "negative_color_range" => metadata_range(negative_color_range),
+        "sign_encoding" => "separate_positive_negative_palettes",
         "positive_color" => collect(CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_COLOR),
         "negative_color" => collect(CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_COLOR),
+        "positive_color_palette" =>
+            String(CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_PALETTE),
+        "negative_color_palette" =>
+            String(CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_PALETTE),
+        "color_radius" => CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_RADIUS,
+        "color_top_fraction" => CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_TOP_FRACTION,
+        "color_stat" => String(CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_STAT),
+        "color_gamma" => CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_GAMMA,
         "alpha" => alpha,
         "transparency" => transparency,
         "mesh_source" => "topological_charge_volume_geometry",
@@ -239,6 +260,18 @@ end
 function topological_charge_style_preset_settings(style_preset)
     return topological_charge_style_preset_settings(
         validate_topological_charge_style_preset(style_preset))
+end
+
+function default_topological_charge_level_quantiles(preset_settings, render_style::Symbol)
+    render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME &&
+        return CURRENT_TOPOLOGICAL_CHARGE_VOLUME_LEVEL_QUANTILES
+    return preset_settings.level_quantiles
+end
+
+function default_topological_charge_color_quantile(preset_settings, render_style::Symbol)
+    render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME &&
+        return CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_QUANTILE
+    return preset_settings.color_quantile
 end
 
 function contour_plot_kwargs(style, levels)
@@ -651,6 +684,22 @@ function classic_thermogram_stops()
     )
 end
 
+function topological_charge_positive_stops()
+    return (
+        (0.00, (1.00, 0.82, 0.00)),
+        (0.55, (1.00, 0.48, 0.00)),
+        (1.00, (1.00, 0.02, 0.00)),
+    )
+end
+
+function topological_charge_negative_stops()
+    return (
+        (0.00, (0.00, 0.82, 1.00)),
+        (0.55, (0.00, 0.38, 1.00)),
+        (1.00, (0.02, 0.04, 0.72)),
+    )
+end
+
 function interp_color_stops(stops, t)
     x = clamp(t, 0, 1)
     for i in 1:(length(stops) - 1)
@@ -664,15 +713,39 @@ function interp_color_stops(stops, t)
     return stops[end][2]
 end
 
+function scalar_mesh_color_stops(palette::Symbol)
+    if palette == :classic_thermo
+        return classic_thermogram_stops()
+    elseif palette == CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_PALETTE
+        return topological_charge_positive_stops()
+    elseif palette == CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_PALETTE
+        return topological_charge_negative_stops()
+    end
+    throw(ArgumentError("unsupported scalar mesh color palette: $palette"))
+end
+
+function scalar_field_mesh_color(value; qmin, qmax, palette, gamma)
+    t = qmax == qmin ? 1.0 : clamp((value - qmin) / (qmax - qmin), 0, 1)
+    c = interp_color_stops(scalar_mesh_color_stops(palette), t^gamma)
+    return Vec3f(c[1], c[2], c[3])
+end
+
 function action_density_blob_color(value; qmin, qmax,
     palette=CURRENT_ACTION_DENSITY_COLOR_PALETTE,
     gamma=CURRENT_ACTION_DENSITY_COLOR_GAMMA)
 
-    palette == :classic_thermo ||
-        throw(ArgumentError("unsupported action-density color palette: $palette"))
-    t = qmax == qmin ? 1.0 : clamp((value - qmin) / (qmax - qmin), 0, 1)
-    c = interp_color_stops(classic_thermogram_stops(), t^gamma)
-    return Vec3f(c[1], c[2], c[3])
+    return scalar_field_mesh_color(value; qmin=qmin, qmax=qmax,
+        palette=palette, gamma=gamma)
+end
+
+function topological_charge_volume_magnitude_color(value; qmin, qmax, palette,
+    gamma=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_GAMMA)
+
+    palette in (CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_PALETTE,
+        CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_PALETTE) ||
+        throw(ArgumentError("unsupported topological charge volume palette: $palette"))
+    return scalar_field_mesh_color(value; qmin=qmin, qmax=qmax,
+        palette=palette, gamma=gamma)
 end
 
 function local_color_value(data, x, y, z;
@@ -712,6 +785,7 @@ function build_action_density_blob_mesh(data; base_level, color_range,
     top_fraction=CURRENT_ACTION_DENSITY_COLOR_TOP_FRACTION,
     palette=CURRENT_ACTION_DENSITY_COLOR_PALETTE,
     gamma=CURRENT_ACTION_DENSITY_COLOR_GAMMA,
+    color_alpha=1.0,
     a,
     lattice_size)
 
@@ -728,7 +802,7 @@ function build_action_density_blob_mesh(data; base_level, color_range,
     function owner_color(x, y, z)
         value = local_color_value(data, x, y, z;
             radius=color_radius, stat=color_stat, top_fraction=top_fraction)
-        return action_density_blob_color(value;
+        return scalar_field_mesh_color(value;
             qmin=qmin, qmax=qmax, palette=palette, gamma=gamma)
     end
 
@@ -791,7 +865,8 @@ function build_action_density_blob_mesh(data; base_level, color_range,
         end
     end
 
-    colors = [RGBAf((color_sums[i] / color_counts[i])..., 1) for i in eachindex(color_sums)]
+    colors = [RGBAf((color_sums[i] / color_counts[i])..., color_alpha)
+              for i in eachindex(color_sums)]
     info = (filled=count(mask), vertices=length(vertices), faces=length(faces))
     return vertices, faces, colors, info
 end
@@ -944,7 +1019,15 @@ function action_density_blob_display_setup(action_density)
     )
 end
 
-function action_density_blob_geometry(data, setup; a, lattice_size)
+function action_density_blob_geometry(data, setup;
+    color_radius=CURRENT_ACTION_DENSITY_COLOR_RADIUS,
+    color_stat=CURRENT_ACTION_DENSITY_COLOR_STAT,
+    top_fraction=CURRENT_ACTION_DENSITY_COLOR_TOP_FRACTION,
+    palette=CURRENT_ACTION_DENSITY_COLOR_PALETTE,
+    gamma=CURRENT_ACTION_DENSITY_COLOR_GAMMA,
+    color_alpha=1.0,
+    a,
+    lattice_size)
     upsampled = upsample_clamped_3d(data, CURRENT_ACTION_DENSITY_UPSAMPLE_FACTOR)
     render_field = smooth_clamped_3d(upsampled;
         weight=CURRENT_ACTION_DENSITY_POST_SMOOTH_WEIGHT,
@@ -953,11 +1036,12 @@ function action_density_blob_geometry(data, setup; a, lattice_size)
         base_level=setup.body_level,
         color_range=setup.color_range,
         factor=CURRENT_ACTION_DENSITY_UPSAMPLE_FACTOR,
-        color_radius=CURRENT_ACTION_DENSITY_COLOR_RADIUS,
-        color_stat=CURRENT_ACTION_DENSITY_COLOR_STAT,
-        top_fraction=CURRENT_ACTION_DENSITY_COLOR_TOP_FRACTION,
-        palette=CURRENT_ACTION_DENSITY_COLOR_PALETTE,
-        gamma=CURRENT_ACTION_DENSITY_COLOR_GAMMA,
+        color_radius=color_radius,
+        color_stat=color_stat,
+        top_fraction=top_fraction,
+        palette=palette,
+        gamma=gamma,
+        color_alpha=color_alpha,
         a=a,
         lattice_size=lattice_size)
     smooth_vertices = taubin_smooth_mesh(vertices, faces;
@@ -986,26 +1070,57 @@ function constant_color_geometry(geometry, color)
         info=geometry.info)
 end
 
-function topological_charge_volume_component_geometry(data, body_level, color;
-    a, lattice_size)
+function topological_charge_volume_component_geometry(data, body_level;
+    color_range,
+    palette,
+    alpha,
+    color_radius=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_RADIUS,
+    color_stat=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_STAT,
+    top_fraction=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_TOP_FRACTION,
+    gamma=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_GAMMA,
+    a,
+    lattice_size)
 
     body_level === nothing && return nothing
+    color_range === nothing && return nothing
     render_field = smooth_periodic_3d(data)
     maximum(render_field) >= body_level || return nothing
     count(>=(body_level), render_field) > 0 || return nothing
-    setup = (body_level=body_level, color_range=(body_level, maximum(render_field)))
-    geometry = action_density_blob_geometry(render_field, setup; a=a, lattice_size=lattice_size)
-    return constant_color_geometry(geometry, color)
+    qmin, qmax = color_range
+    setup = (body_level=body_level, color_range=(qmin, max(qmax, body_level)))
+    return action_density_blob_geometry(render_field, setup;
+        color_radius=color_radius,
+        color_stat=color_stat,
+        top_fraction=top_fraction,
+        palette=palette,
+        gamma=gamma,
+        color_alpha=alpha,
+        a=a,
+        lattice_size=lattice_size)
 end
 
 function topological_charge_volume_geometry(data, setup; a, lattice_size)
     positive_data = max.(data, 0.0)
     negative_data = max.(-data, 0.0)
     positive_geometry = topological_charge_volume_component_geometry(
-        positive_data, setup.positive_body_level, setup.positive_color;
+        positive_data, setup.positive_body_level;
+        color_range=setup.positive_color_range,
+        palette=setup.positive_color_palette,
+        alpha=setup.alpha,
+        color_radius=setup.color_radius,
+        color_stat=setup.color_stat,
+        top_fraction=setup.color_top_fraction,
+        gamma=setup.color_gamma,
         a=a, lattice_size=lattice_size)
     negative_geometry = topological_charge_volume_component_geometry(
-        negative_data, setup.negative_body_level, setup.negative_color;
+        negative_data, setup.negative_body_level;
+        color_range=setup.negative_color_range,
+        palette=setup.negative_color_palette,
+        alpha=setup.alpha,
+        color_radius=setup.color_radius,
+        color_stat=setup.color_stat,
+        top_fraction=setup.color_top_fraction,
+        gamma=setup.color_gamma,
         a=a, lattice_size=lattice_size)
     return (
         positive=positive_geometry,

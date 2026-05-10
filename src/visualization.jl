@@ -100,9 +100,11 @@ function topological_charge_display_level_setup(density_t;
         throw(ArgumentError("topological charge density requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED or $RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME"))
     preset_settings = topological_charge_style_preset_settings(style_preset)
     effective_level_quantiles = something(
-        level_quantiles, preset_settings.level_quantiles)
+        level_quantiles, default_topological_charge_level_quantiles(
+            preset_settings, render_style))
     effective_color_quantile = something(
-        color_quantile, preset_settings.color_quantile)
+        color_quantile, default_topological_charge_color_quantile(
+            preset_settings, render_style))
     display_field = copy(density_t)
     level_summary = legacy_level_summary(display_field)
     levels = signed_symmetric_levels(display_field; quantiles=effective_level_quantiles)
@@ -112,6 +114,12 @@ function topological_charge_display_level_setup(density_t;
     if render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME
         positive_body_level = smallest_positive_level(levels)
         negative_body_level = smallest_negative_magnitude_level(levels)
+        color_abs_ceiling = maximum(abs.(signed_symmetric_color_range(
+            display_field; quantile_level=effective_color_quantile)))
+        positive_color_range =
+            topological_charge_volume_color_range(positive_body_level, color_abs_ceiling)
+        negative_color_range =
+            topological_charge_volume_color_range(negative_body_level, color_abs_ceiling)
         alpha = something(render_alpha, CURRENT_TOPOLOGICAL_CHARGE_ALPHA)
         transparency = something(render_transparency, false)
         render_style_info = topological_charge_volume_style_metadata(
@@ -120,6 +128,8 @@ function topological_charge_display_level_setup(density_t;
             negative_body_level=negative_body_level,
             level_quantiles=effective_level_quantiles,
             color_quantile=effective_color_quantile,
+            positive_color_range=positive_color_range,
+            negative_color_range=negative_color_range,
             alpha=alpha,
             transparency=transparency)
         return (
@@ -130,10 +140,15 @@ function topological_charge_display_level_setup(density_t;
             levels=levels,
             positive_body_level=positive_body_level,
             negative_body_level=negative_body_level,
-            positive_color=topological_charge_volume_color(
-                CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_COLOR; alpha=alpha),
-            negative_color=topological_charge_volume_color(
-                CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_COLOR; alpha=alpha),
+            positive_color_range=positive_color_range,
+            negative_color_range=negative_color_range,
+            positive_color_palette=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_PALETTE,
+            negative_color_palette=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_PALETTE,
+            color_radius=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_RADIUS,
+            color_stat=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_STAT,
+            color_top_fraction=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_TOP_FRACTION,
+            color_gamma=CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_GAMMA,
+            alpha=alpha,
             transparency=transparency,
             display_transform_info=topological_charge_display_transform_metadata(),
             level_selection_info=level_selection_info,
