@@ -190,6 +190,40 @@ updated: 2026-05-10T07:16:39.357Z
 file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view-v2.html
 ```
 
+- User threshold review v2 pasted on 2026-05-10:
+
+```text
+# VisualizingLQCD topological-density threshold movie visual check v2
+
+source: file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view-v2.html
+session: 1778398120
+updated: 2026-05-10T07:33:21.305Z
+
+- q0.980 body: too small, needs work
+- q0.970 body: too small
+- q0.960 body: good
+- q0.950 body: visible, good, best default, comment only | note: もう少ししきい値下げたものも用意しても良さそう。0.98 はもういらないかな
+```
+
+- Threshold-review v3 decision:
+  - drop `q0.980` from the next visual comparison;
+  - keep `q0.960` as the known-good reference;
+  - keep `q0.950` as the current best default candidate;
+  - add lower-threshold candidates below `q0.950` to check whether larger
+    signed lumps remain useful without becoming noisy or too slow.
+- Generated threshold-review v3 candidates:
+  - retain `q0.960`, body level approximately `2.3423e-4`;
+  - retain `q0.950`, body level approximately `2.1657e-4`;
+  - add `q0.940`, body level approximately `2.0276e-4`, render time about
+    `1:21`;
+  - add `q0.930`, body level approximately `1.9124e-4`, render time about
+    `1:57`.
+- Threshold comparison review v3 page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view-v3.html
+```
+
 - Validation:
   - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl` on
     `main` before the movie run.
@@ -202,8 +236,13 @@ file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view-v2.h
     review controls.
   - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl`
     after recording the v2 threshold candidates.
+  - generated `q0.940` and `q0.930` v3 candidate movies without errors;
+  - confirmed the v3 comparison page contains `q0.960`, `q0.950`, `q0.940`,
+    `q0.930`, plus the extra `too slow` visual-review control.
+  - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl`
+    after recording the v3 threshold candidates.
 - User action needed:
-  - open the threshold comparison v2 review page, inspect the movies, and paste
+  - open the threshold comparison v3 review page, inspect the movies, and paste
     the generated checkbox/comment review text back into the thread.
 
 ## Active note: 2026-05-10 topological-density config movie review helper
