@@ -4,7 +4,62 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the topological-density config-review pass.
+Last updated on 2026-05-10 during the `24^3 x 32` topological-density review pass.
+
+## Active note: 2026-05-10 `24^3 x 32` topological-density config review
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-config-review-24x32-result`.
+- Starting point: PR #23 was merged into `main`.
+- Goal: run the new config-level still-review script on a real `24^3 x 32`
+  ILDG configuration before attempting a full topological-density movie.
+- Input:
+
+```text
+/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+```
+
+- Output review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-config-review-24x32/view.html
+```
+
+- Command:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_review.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode both --slice4 auto --auto-slices 4 --figure-size 560 --output-dir /private/tmp/VisualizingLQCD-topological-config-review-24x32
+```
+
+- Result:
+  - run completed locally; no remote machine was needed for still review;
+  - selected slices: `6`, `5`, `28`, `27`;
+  - generated four contour PNGs, four volume PNGs, and `view.html`;
+  - output size: about `1.3M`;
+  - total topological charge from the clover density: approximately `0.023`;
+  - density range: approximately `[-0.001479, 0.001732]`;
+  - default balanced upper-tail volume levels produced non-empty positive and
+    negative meshes for all four selected slices.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass before the `24^3 x 32` review run
+
+git diff --check
+result: pass before this memo update
+```
+
+- User action needed next:
+  - open the review page above;
+  - inspect the contour and volume stills for the four selected slices;
+  - use the checkboxes and copy the generated review text back into the thread.
 
 ## Active note: 2026-05-10 topological-density config review
 
