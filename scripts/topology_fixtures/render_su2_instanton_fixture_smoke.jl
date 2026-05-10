@@ -247,9 +247,11 @@ function render_case(case, output_dir, options)
     fig = Figure(size=(560, 560), backgroundcolor=:black)
     ax = Axis3(fig[1, 1]; axis_kwargs(case.name)...)
     limits!(ax, 1, nx, 1, ny, 1, nz)
-    contour_kwargs = VisualizingLQCD.contour_plot_kwargs(setup.contour_style, setup.levels)
-    GLMakie.contour!(ax, (1.0, Float64(nx)), (1.0, Float64(ny)), (1.0, Float64(nz)),
-        @view(density[:, :, :, case.slice4]); contour_kwargs...)
+    for spec in VisualizingLQCD.contour_plot_specs(setup.contour_style, setup.levels)
+        contour_kwargs = VisualizingLQCD.contour_plot_kwargs(spec.style, spec.levels)
+        GLMakie.contour!(ax, (1.0, Float64(nx)), (1.0, Float64(ny)), (1.0, Float64(nz)),
+            @view(density[:, :, :, case.slice4]); contour_kwargs...)
+    end
 
     png_path = joinpath(output_dir, "$(case.name).png")
     save(png_path, fig)

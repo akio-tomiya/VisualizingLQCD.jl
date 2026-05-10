@@ -264,6 +264,37 @@ end
     @test topological_setup.render_style_info["render_style"] == "topological_charge_signed"
     @test topological_setup.render_style_info["style_preset"] == "balanced"
     @test topological_setup.render_style_info["color_range"] == [-4.0, 4.0]
+    signed_specs = VisualizingLQCD.contour_plot_specs(
+        topological_setup.contour_style, topological_setup.levels)
+    @test length(signed_specs) == 2
+    @test all(<(0), signed_specs[1].levels)
+    @test all(>(0), signed_specs[2].levels)
+    @test signed_specs[1].style.colormap ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_NEGATIVE_COLORMAP)
+    @test signed_specs[2].style.colormap ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_POSITIVE_COLORMAP)
+
+    positive_only_setup = VisualizingLQCD.topological_charge_display_level_setup(
+        reshape([0.0, 1.0, 2.0, 4.0, 0.0, 1.0, 2.0, 4.0], 2, 2, 2, 1);
+        level_quantiles=(0.0, 1.0),
+        color_quantile=1.0)
+    positive_specs = VisualizingLQCD.contour_plot_specs(
+        positive_only_setup.contour_style, positive_only_setup.levels)
+    @test length(positive_specs) == 1
+    @test all(>(0), positive_specs[1].levels)
+    @test positive_specs[1].style.colormap ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_POSITIVE_COLORMAP)
+
+    negative_only_setup = VisualizingLQCD.topological_charge_display_level_setup(
+        reshape([0.0, -1.0, -2.0, -4.0, 0.0, -1.0, -2.0, -4.0], 2, 2, 2, 1);
+        level_quantiles=(0.0, 1.0),
+        color_quantile=1.0)
+    negative_specs = VisualizingLQCD.contour_plot_specs(
+        negative_only_setup.contour_style, negative_only_setup.levels)
+    @test length(negative_specs) == 1
+    @test all(<(0), negative_specs[1].levels)
+    @test negative_specs[1].style.colormap ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_NEGATIVE_COLORMAP)
     wide_topological_setup = VisualizingLQCD.topological_charge_display_level_setup(
         reshape([-4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0], 2, 2, 2, 1);
         style_preset=VisualizingLQCD.TOPOLOGICAL_CHARGE_STYLE_WIDE,

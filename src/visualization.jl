@@ -307,17 +307,35 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     plot_obj = Ref{Any}(nothing)
     current_slice4 = Ref{Union{Nothing,Int}}(nothing)
     mesh_cache = Dict{Int,Any}()
+    function delete_plot_obj!(obj)
+        obj === nothing && return nothing
+        if obj isa AbstractVector
+            for item in obj
+                delete!(ax, item)
+            end
+        else
+            delete!(ax, obj)
+        end
+        return nothing
+    end
+
+    function contour_plot_group!(data, group_levels)
+        objects = Any[]
+        for spec in contour_plot_specs(display_setup.contour_style, group_levels)
+            contour_kwargs = contour_plot_kwargs(spec.style, spec.levels)
+            push!(objects, GLMakie.contour!(
+                ax, x_physical, y_physical, z_physical, data; contour_kwargs...))
+        end
+        return objects
+    end
+
     if display_setup.render_kind == :contour
         dummy_data = zeros(Float64, NX, NY, NZ)
-        dummy_kwargs = contour_plot_kwargs(display_setup.contour_style, [levels[1]])
-        plot_obj[] = GLMakie.contour!(ax, x_physical, y_physical, z_physical, dummy_data;
-            dummy_kwargs...)
+        plot_obj[] = contour_plot_group!(dummy_data, [levels[1]])
     end
 
     function draw_slice!(slice4)
-        if plot_obj[] !== nothing
-            delete!(ax, plot_obj[])
-        end
+        delete_plot_obj!(plot_obj[])
 
         plaqs = @view plaqs_t[:, :, :, slice4]
         ax.title = movie_title
@@ -334,9 +352,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
                     a=a, lattice_size=(NX, NY, NZ))
             end
         else
-            contour_kwargs = contour_plot_kwargs(display_setup.contour_style, levels)
-            plot_obj[] = GLMakie.contour!(ax, x_physical, y_physical, z_physical, plaqs;
-                contour_kwargs...)
+            plot_obj[] = contour_plot_group!(plaqs, levels)
         end
         limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
         current_slice4[] = slice4

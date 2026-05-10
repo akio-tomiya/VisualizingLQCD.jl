@@ -107,21 +107,31 @@ function topological_charge_signed_contour_style(density;
     transparency=CURRENT_TOPOLOGICAL_CHARGE_TRANSPARENCY)
 
     color_range = signed_symmetric_color_range(density; quantile_level=color_quantile)
+    metadata = contour_style_metadata(
+        render_style=RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED,
+        colormap=colormap,
+        alpha=alpha,
+        transparency=transparency,
+        color_quantity="topological_charge_density",
+        color_method="signed_symmetric_magnitude_quantile",
+        color_quantiles=(color_quantile,),
+        color_range=color_range,
+    )
+    metadata["signed_contour_groups"] = true
+    metadata["positive_colormap"] =
+        colormap_metadata_value(CURRENT_TOPOLOGICAL_CHARGE_POSITIVE_COLORMAP)
+    metadata["negative_colormap"] =
+        colormap_metadata_value(CURRENT_TOPOLOGICAL_CHARGE_NEGATIVE_COLORMAP)
     return (
         colormap=collect(colormap),
         colorrange=color_range,
         alpha=alpha,
         transparency=transparency,
-        metadata=contour_style_metadata(
-            render_style=RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED,
-            colormap=colormap,
-            alpha=alpha,
-            transparency=transparency,
-            color_quantity="topological_charge_density",
-            color_method="signed_symmetric_magnitude_quantile",
-            color_quantiles=(color_quantile,),
-            color_range=color_range,
-        ),
+        split_signed_levels=true,
+        positive_colormap=collect(CURRENT_TOPOLOGICAL_CHARGE_POSITIVE_COLORMAP),
+        negative_colormap=collect(CURRENT_TOPOLOGICAL_CHARGE_NEGATIVE_COLORMAP),
+        color_abs_ceiling=maximum(abs.(color_range)),
+        metadata=metadata,
     )
 end
 
@@ -190,6 +200,48 @@ function contour_plot_kwargs(style, levels)
         kwargs[:colorrange] = style.colorrange
     end
     return kwargs
+end
+
+function contour_plot_specs(style, levels)
+    if hasproperty(style, :split_signed_levels) && style.split_signed_levels
+        negative_levels = [level for level in levels if level < 0]
+        positive_levels = [level for level in levels if level > 0]
+        specs = []
+        if !isempty(negative_levels)
+            ceiling = style.color_abs_ceiling
+            lower = min(-ceiling, minimum(negative_levels))
+            upper = maximum(negative_levels)
+            lower < upper || (lower = prevfloat(upper))
+            push!(specs, (
+                style=(
+                    colormap=style.negative_colormap,
+                    colorrange=(lower, upper),
+                    alpha=style.alpha,
+                    transparency=style.transparency,
+                    metadata=style.metadata,
+                ),
+                levels=negative_levels,
+            ))
+        end
+        if !isempty(positive_levels)
+            ceiling = style.color_abs_ceiling
+            lower = minimum(positive_levels)
+            upper = max(ceiling, maximum(positive_levels))
+            upper > lower || (upper = nextfloat(lower))
+            push!(specs, (
+                style=(
+                    colormap=style.positive_colormap,
+                    colorrange=(lower, upper),
+                    alpha=style.alpha,
+                    transparency=style.transparency,
+                    metadata=style.metadata,
+                ),
+                levels=positive_levels,
+            ))
+        end
+        return specs
+    end
+    return [(style=style, levels=levels)]
 end
 
 function default_raw_high_level_quantiles(render_style::Symbol)

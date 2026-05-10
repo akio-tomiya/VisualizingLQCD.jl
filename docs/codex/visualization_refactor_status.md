@@ -1868,3 +1868,15 @@ Validation:
   `/private/tmp/VisualizingLQCD-topology-style-balanced/view.html`,
   `/private/tmp/VisualizingLQCD-topology-style-wide/view.html`, and
   `/private/tmp/VisualizingLQCD-topology-style-core/view.html`.
+
+Correction after visual review:
+
+- The first preset smoke pages did not show single-sign scalar fixtures.
+- Cause: topological signed contours were drawn in one GLMakie `contour!` call
+  with a symmetric color range. This made one-sign contour groups effectively
+  invisible even though the selected levels intersected the rendered slice.
+- Fix: split signed topological contours into negative and positive contour
+  groups. Negative levels use the negative colormap, positive levels use the
+  positive colormap, and both keep the same signed level selection.
+- Also raise the balanced/default topological color quantile from `0.995` to
+  `0.999`; the old value can make single-sign fixture contours disappear.
