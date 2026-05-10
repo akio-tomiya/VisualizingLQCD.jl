@@ -4,7 +4,7 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the README action-density media conflict resolution.
+Last updated on 2026-05-10 during the `24^3 x 32` topological-density threshold review v2 run.
 
 ## Active note: 2026-05-10 README action-density timing and scale
 
@@ -92,7 +92,10 @@ Last updated on 2026-05-10 during the README action-density media conflict resol
 /Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
 ```
 
-- Branch: `codex/topological-movie-24x32-result`.
+- Branches:
+  - `codex/topological-movie-24x32-result` for the first movie result record;
+  - `codex/topological-threshold-review-24x32-result` for threshold-review
+    follow-up records.
 - Starting point: PR #27 was merged into `main`.
 - Goal: use the new config movie helper on the real `24^3 x 32` configuration
   and produce a reviewable topological-charge-density movie.
@@ -131,14 +134,77 @@ file:///private/tmp/VisualizingLQCD-topological-config-movie-24x32/view.html
 - Quick visual sanity:
   - QuickLook thumbnail generation succeeded;
   - thumbnail shows non-empty signed yellow/blue volume meshes;
-  - detailed visual quality is not judged yet and needs user review in the
-    generated HTML page.
+  - detailed visual quality was then checked by the user in the generated HTML
+    page.
+- User visual review pasted on 2026-05-10:
+
+```text
+# VisualizingLQCD topological-density config movie visual check
+
+source: file:///private/tmp/VisualizingLQCD-topological-config-movie-24x32/view.html
+session: 1778396089872
+updated: 2026-05-10T07:00:01.858Z
+
+- volume movie: visible, comment only | note: かなりいいけど、lump が小さすぎない？しきい値再検討かな。
+```
+
+- Follow-up threshold hypothesis:
+  - the default volume body threshold is the lower level quantile `q0.990`,
+    giving body level approximately `3.5433e-4`;
+  - lower the body threshold while keeping the upper color/diagnostic level at
+    `q0.999` to enlarge visible signed lumps without changing camera, frame
+    count, color semantics, or rendering mode.
+- Generated threshold candidates:
+  - baseline `q0.990`, body level approximately `3.5433e-4`;
+  - `q0.985`, body level approximately `3.1659e-4`;
+  - `q0.980`, body level approximately `2.9170e-4`;
+  - `q0.970`, body level approximately `2.5739e-4`.
+- Threshold comparison review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view.html
+```
+
+- User threshold review pasted on 2026-05-10:
+
+```text
+# VisualizingLQCD topological-density threshold movie visual check
+
+source: file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view.html
+session: 1778396777
+updated: 2026-05-10T07:16:39.357Z
+
+- baseline q0.990 body: visible, too small
+- q0.985 body: visible, too small
+- q0.980 body: visible
+- q0.970 body: visible, comment only | note: まだしきい値を下げてもいいかも。
+```
+
+- Generated threshold-review v2 candidates:
+  - retain `q0.980` and `q0.970` for continuity;
+  - add `q0.960`, body level approximately `2.3423e-4`;
+  - add `q0.950`, body level approximately `2.1657e-4`.
+- Threshold comparison review v2 page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view-v2.html
+```
+
 - Validation:
   - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl` on
     `main` before the movie run.
+  - generated all three lower-threshold candidate movies without errors;
+  - confirmed the threshold comparison page contains all four candidates and
+    the `too small` / `too large or noisy` visual-review controls.
+  - generated `q0.960` and `q0.950` v2 candidate movies without errors;
+  - confirmed the v2 comparison page contains `q0.980`, `q0.970`, `q0.960`,
+    `q0.950`, plus `best default`, `too small`, and `too large or noisy`
+    review controls.
+  - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl`
+    after recording the v2 threshold candidates.
 - User action needed:
-  - open the output review page, inspect the movie, and paste the generated
-    checkbox/comment review text back into the thread.
+  - open the threshold comparison v2 review page, inspect the movies, and paste
+    the generated checkbox/comment review text back into the thread.
 
 ## Active note: 2026-05-10 topological-density config movie review helper
 
