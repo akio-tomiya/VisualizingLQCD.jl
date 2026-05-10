@@ -507,10 +507,17 @@ end
 @testset "Sample artifact contracts" begin
     root = dirname(@__DIR__)
     readme_text = read(joinpath(root, "README.md"), String)
+    topology_readme_text = read(joinpath(root, "scripts", "topology_fixtures", "README.md"),
+        String)
     @test occursin("$(SAMPLE_BASENAME).gif", readme_text)
     @test occursin("width=\"300\"", readme_text)
     @test occursin("`896` frames", readme_text)
     @test occursin("show_axis_labels=false", readme_text)
+    @test occursin("LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY", readme_text)
+    @test occursin("RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME", readme_text)
+    @test occursin("`abs(q)`", readme_text)
+    @test occursin("q0.940", topology_readme_text)
+    @test occursin("--show-render-progress true", topology_readme_text)
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).mp4"))
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).gif"))
     @test isfile(joinpath(root, "test", "$(SAMPLE_BASENAME).gif"))

@@ -64,6 +64,38 @@ create_animation(
 )
 ```
 
+## Topological charge density
+
+Topological charge density can be rendered with the clover definition used by
+Gaugefields.jl. The density is signed, so the volume style draws positive and
+negative regions as separate solid meshes. The default volume threshold uses
+upper-tail `|q|` quantiles `(0.94, 0.999)`, and the mesh color encodes local
+`abs(q)`: positive charge progresses from yellow/orange to red, while negative
+charge progresses from cyan to blue.
+
+```julia
+topological_videoname = "topological_charge_density$(NX)$(NY)$(NZ)$(NT)beta$(β).mp4"
+
+create_animation(
+    NX, NY, NZ, NT, NC, topological_videoname;
+    beta=β,
+    filename=confname,
+    level_target=VisualizingLQCD.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY,
+    render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME,
+    camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT,
+    frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
+    nloops=2,
+    framerate=8,
+    figure_size=(480, 480),
+)
+```
+
+The fourth-direction sequence is still Euclidean slice selection, not real-time
+evolution. Each output movie writes a metadata sidecar recording the slice map,
+threshold quantiles, color method, and observable definition. For a contour
+version instead of filled volume meshes, use
+`render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED`.
+
 To rotate the camera during the movie, use `camera_motion=:orbit`. Orbit movies
 keep one fourth-direction slice fixed by default, so the shape is not changed by
 the slice sequence while the camera rotates. It also uses `viewmode=:fit` and

@@ -4,7 +4,39 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the topological-volume `abs(q)` visual review.
+Last updated on 2026-05-10 during the topological-density documentation PR.
+
+## Active note: 2026-05-10 topological-density documentation
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-density-docs`.
+- Starting point: PR #34 was merged into `main`.
+- Goal:
+  - stop the accepted topological-density baseline from living only in Codex
+    status notes;
+  - document the user-facing API for rendering topological charge density;
+  - keep this as a low-risk documentation/test PR before making larger sample
+    artifacts.
+- Implemented:
+  - README now has a `Topological charge density` section;
+  - the README example uses
+    `LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY` with
+    `RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME`;
+  - the README explains the Euclidean fourth-direction sequence, signed
+    positive/negative volume meshes, `q0.940`/`q0.999` default threshold, local
+    `abs(q)` color mapping, and metadata sidecar;
+  - `scripts/topology_fixtures/README.md` now records the reviewed
+    topological-volume baseline and updates the movie-review command to the
+    accepted `nloops=2`, `framerate=8`, `figure_size=480`,
+    `show-render-progress=true` style;
+  - sample artifact tests now check that the topological-density README
+    examples remain present.
 
 ## Active note: 2026-05-10 topological-volume `abs(q)` visual review
 
