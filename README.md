@@ -3,7 +3,7 @@
 - 2025/01/11
 - A. Tomiya akio@yukawa.kyoto-u.ac.jp 
 
-<img src="plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif" alt="QCD vacuum" width="200">
+<img src="plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif" alt="QCD vacuum" width="300">
 
 [Another example (Youtube)](http://youtube.com/shorts/nscMhDamzfg)
 
@@ -98,19 +98,22 @@ create_animation(
     camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT,
     frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
     camera_orbit_turns=1,
-    nloops=6,
-    framerate=14,
+    nloops=7,
+    framerate=17,
     slice_hold_frames=2,
     figure_size=(480, 480),
+    show_axis_labels=false,
 )
 ```
 
-For the `32^3 x 64` sample this gives `768` frames: all `64` Euclidean
-fourth-direction slices are shown six times, each slice is held for two frames,
-and the camera completes one full turn. This keeps the playback speed of the
-previous `384`-frame version while making the camera motion smoother. The
-source movie is rendered at `480 x 480` and the README GIF is displayed at
-`200` px.
+For the `32^3 x 64` sample this gives `896` frames: all `64` Euclidean
+fourth-direction slices are shown seven times, each slice is held for two
+frames, and the camera completes one full turn. Compared with the previous
+`768`-frame README sample, the fourth-direction slice motion is about `1.21`
+times faster while the camera-orbit speed stays close to the accepted version.
+The source movie and bundled GIF are rendered at `480 x 480`; the README shows
+the GIF at `300` px. Axis labels are hidden in the bundled README movie to avoid
+label shimmer during the camera orbit; the 3D box and grid remain visible.
 
 ## Visualization from scratch
 

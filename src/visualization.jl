@@ -193,7 +193,8 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     camera_orbit_seconds=CURRENT_CAMERA_ORBIT_SECONDS,
     camera_perspectiveness=nothing,
     camera_viewmode=nothing,
-    show_render_progress=CURRENT_SHOW_RENDER_PROGRESS)
+    show_render_progress=CURRENT_SHOW_RENDER_PROGRESS,
+    show_axis_labels=CURRENT_SHOW_AXIS_LABELS)
 
     #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
     Nwing = CURRENT_NWING
@@ -271,6 +272,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     cache_render_slices isa Bool || throw(ArgumentError("cache_render_slices should be Bool"))
     effective_figure_size = validate_figure_size(figure_size)
     effective_show_render_progress = validate_show_render_progress(show_render_progress)
+    effective_show_axis_labels = validate_show_axis_labels(show_axis_labels)
     cache_active = cache_render_slices && display_setup.render_kind == :mesh
 
     #= To check iso-level, please use here
@@ -307,11 +309,17 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         z_labels[i] = ""
     end
 
+    if !effective_show_axis_labels
+        fill!(x_labels, "")
+        fill!(y_labels, "")
+        fill!(z_labels, "")
+    end
+
     axis_aspect = display_setup.render_kind == :mesh ? :data : CURRENT_ASPECT
     axis_kwargs = Dict{Symbol,Any}(
-        :xlabel => myxlabel,
-        :ylabel => myylabel,
-        :zlabel => myzlabel,
+        :xlabel => effective_show_axis_labels ? myxlabel : "",
+        :ylabel => effective_show_axis_labels ? myylabel : "",
+        :zlabel => effective_show_axis_labels ? myzlabel : "",
         :title => movie_title,
         :xticks => (x_positions, x_labels),
         :yticks => (y_positions, y_labels),
@@ -452,6 +460,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         render_style_info=display_setup.render_style_info,
         render_theme_info=render_theme_metadata(effective_theme),
         render_progress_info=render_progress_metadata(effective_show_render_progress),
+        render_axis_info=render_axis_metadata(effective_show_axis_labels),
         camera_info=camera_motion_metadata(camera),
         render_cache_info=Dict(
             "cache_render_slices" => cache_active,

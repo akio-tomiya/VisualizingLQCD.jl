@@ -8,8 +8,8 @@ fi
 
 input="$1"
 output="$2"
-width="${3:-200}"
-fps="${4:-14}"
+width="${3:-480}"
+fps="${4:-17}"
 palette="$(mktemp "${TMPDIR:-/tmp}/vlqcd-palette.XXXXXX.png")"
 trap 'rm -f "$palette"' EXIT
 

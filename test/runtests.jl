@@ -80,7 +80,7 @@ end
     @test VisualizingLQCD.camera_motion_metadata(orbit_camera)["camera_motion"] == "orbit"
     @test VisualizingLQCD.camera_motion_metadata(orbit_camera)["orbit_seconds"] ≈ 640 / 14
 
-    total_frames = VisualizingLQCD.total_movie_frames(64, 6; slice_hold_frames=2)
+    total_frames = VisualizingLQCD.total_movie_frames(64, 7; slice_hold_frames=2)
     azimuths = [VisualizingLQCD.camera_azimuth_for_frame(
                     orbit_camera, frame, total_frames) for frame in 1:total_frames]
     frame_step = 2pi / total_frames
@@ -105,12 +105,13 @@ end
         flow_steps=200,
         levels=[1.0],
         level_summary=sample_summary,
-        framerate=14,
-        nloops=6,
+        framerate=17,
+        nloops=7,
         title="Action-density blob",
         figure_size=(480, 480),
         frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
         slice_hold_frames=2,
+        render_axis_info=VisualizingLQCD.render_axis_metadata(false),
         camera_info=VisualizingLQCD.camera_motion_metadata(sample_camera),
         observable_info=VisualizingLQCD.local_action_density_observable_metadata())
 
@@ -120,12 +121,13 @@ end
     @test metadata["frame_selection"]["frame_mode"] == "slice4_sequence"
     @test metadata["frame_selection"]["fixed_slice4"] === nothing
     @test metadata["frame_selection"]["slice_hold_frames"] == 2
-    @test metadata["render"]["frame_count"] == 768
-    @test metadata["render"]["duration_seconds"] ≈ 768 / 14
+    @test metadata["render"]["frame_count"] == 896
+    @test metadata["render"]["duration_seconds"] ≈ 896 / 17
     @test metadata["render"]["figure_size"] == [480, 480]
+    @test metadata["render"]["show_axis_labels"] == false
     @test length(metadata["frame_map"]) == metadata["render"]["frame_count"]
     @test metadata["frame_map"][1] == Dict("frame" => 1, "slice4" => 1)
-    @test metadata["frame_map"][end] == Dict("frame" => 768, "slice4" => 64)
+    @test metadata["frame_map"][end] == Dict("frame" => 896, "slice4" => 64)
 end
 
 @testset "Display and render setup contracts" begin
@@ -140,6 +142,9 @@ end
     @test VisualizingLQCD.CURRENT_SHOW_RENDER_PROGRESS
     @test VisualizingLQCD.validate_show_render_progress(false) == false
     @test_throws ArgumentError VisualizingLQCD.validate_show_render_progress(:yes)
+    @test VisualizingLQCD.validate_show_axis_labels(false) == false
+    @test VisualizingLQCD.render_axis_metadata(false)["show_axis_labels"] == false
+    @test_throws ArgumentError VisualizingLQCD.validate_show_axis_labels(:yes)
     @test VisualizingLQCD.validate_figure_size((480, 480)) == (480, 480)
     @test_throws ArgumentError VisualizingLQCD.validate_figure_size((480, 0))
     @test VisualizingLQCD.render_progress_metadata(true)["show_render_progress"] == true
@@ -455,8 +460,9 @@ end
     root = dirname(@__DIR__)
     readme_text = read(joinpath(root, "README.md"), String)
     @test occursin("$(SAMPLE_BASENAME).gif", readme_text)
-    @test occursin("width=\"200\"", readme_text)
-    @test occursin("`768` frames", readme_text)
+    @test occursin("width=\"300\"", readme_text)
+    @test occursin("`896` frames", readme_text)
+    @test occursin("show_axis_labels=false", readme_text)
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).mp4"))
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).gif"))
     @test isfile(joinpath(root, "test", "$(SAMPLE_BASENAME).gif"))

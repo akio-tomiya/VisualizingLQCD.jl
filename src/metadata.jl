@@ -121,6 +121,7 @@ function animation_metadata(;
     render_style_info=Dict{String,Any}(),
     render_theme_info=render_theme_metadata(CURRENT_RENDER_THEME),
     render_progress_info=render_progress_metadata(CURRENT_SHOW_RENDER_PROGRESS),
+    render_axis_info=render_axis_metadata(CURRENT_SHOW_AXIS_LABELS),
     camera_info=camera_motion_metadata(camera_settings(:contour)),
     render_cache_info=Dict{String,Any}(),
     observable_info=plaquette_plane_observable_metadata(),
@@ -145,6 +146,7 @@ function animation_metadata(;
         render_theme_info,
         render_style_info,
         render_progress_info,
+        render_axis_info,
         camera_info,
         render_cache_info,
     )

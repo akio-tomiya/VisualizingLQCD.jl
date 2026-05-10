@@ -3,7 +3,7 @@
 - 2025/01/11
 - A. Tomiya akio@yukawa.kyoto-u.ac.jp 
 
-<img src="plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif" alt="QCD vacuum" width="200">
+<img src="plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif" alt="QCD vacuum" width="300">
 
 [Another example (Youtube)](http://youtube.com/shorts/nscMhDamzfg)
 
@@ -53,10 +53,11 @@ To rotate the camera during the movie, pass
 `camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT`. The default orbit timing
 is about 45.7 seconds per full turn at 14 fps, and keeps one fourth-direction
 slice fixed by default. The bundled sample GIF instead uses
-`frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`, `nloops=6`, `framerate=14`,
+`frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`, `nloops=7`, `framerate=17`,
 and `slice_hold_frames=2`, so the `64` Euclidean fourth-direction slices loop
-exactly six times while the camera completes one full turn. The README media are
-rendered smaller for display.
+exactly seven times while the camera completes one full turn. The README media
+are rendered at `480 x 480`, the GIF is displayed at `300` px, and axis labels
+are hidden to avoid label shimmer during the camera orbit.
 
 ## Visualization from scratch
 
