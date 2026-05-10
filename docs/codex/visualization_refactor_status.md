@@ -68,9 +68,26 @@ file:///private/tmp/VisualizingLQCD-topological-abscolor-review-24x32/view.html
   - direct in-app browser navigation to the `file:///private/tmp/...` review
     page was blocked by the browser security policy, so this path should be
     opened manually by the user.
-- User action needed:
-  - open the review page above, inspect the movie, and paste the generated
-    checkbox/comment review text back into the thread.
+- User visual review pasted on 2026-05-10:
+
+```text
+# VisualizingLQCD topological-density config movie visual check
+
+source: file:///private/tmp/VisualizingLQCD-topological-abscolor-review-24x32/view.html
+session: 1778414750978
+updated: 2026-05-10T12:11:56.242Z
+
+- volume movie: visible, good, notable / promising
+```
+
+- Current interpretation:
+  - the `q0.940` body threshold plus local `abs(q)` color mapping is accepted
+    as the current topological-density volume baseline;
+  - do not retune the color range or threshold immediately unless a later
+    larger-volume sample exposes a specific problem;
+  - next topological-density work should focus on documentation/API examples
+    and possibly a larger or longer sample artifact, rather than more local
+    color-search churn.
 
 ## Active note: 2026-05-10 topological-volume absolute-density color
 
