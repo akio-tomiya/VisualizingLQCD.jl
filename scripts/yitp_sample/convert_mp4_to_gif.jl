@@ -31,8 +31,8 @@ end
 function main(args=ARGS)
     input = arg_value(args, "input")
     output = arg_value(args, "output")
-    width = parse(Int, arg_value(args, "width", "200"))
-    fps = parse(Int, arg_value(args, "fps", "14"))
+    width = parse(Int, arg_value(args, "width", "480"))
+    fps = parse(Int, arg_value(args, "fps", "17"))
 
     input === nothing && error("missing --input INPUT.mp4")
     output === nothing && error("missing --output OUTPUT.gif")

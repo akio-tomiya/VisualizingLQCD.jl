@@ -352,6 +352,16 @@ function render_progress_metadata(show_render_progress::Bool)
     )
 end
 
+function validate_show_axis_labels(show_axis_labels)
+    show_axis_labels isa Bool ||
+        throw(ArgumentError("show_axis_labels should be Bool"))
+    return show_axis_labels
+end
+
+function render_axis_metadata(show_axis_labels::Bool)
+    return Dict("show_axis_labels" => show_axis_labels)
+end
+
 function validate_figure_size(figure_size)
     length(figure_size) == 2 || throw(ArgumentError("figure_size should have two entries"))
     width, height = figure_size

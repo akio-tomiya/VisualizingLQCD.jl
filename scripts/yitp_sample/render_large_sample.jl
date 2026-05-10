@@ -10,6 +10,12 @@ function arg_value(args, name, default)
     return args[index + 1]
 end
 
+function parse_bool(value)
+    lowercase(value) in ("1", "true", "yes") && return true
+    lowercase(value) in ("0", "false", "no") && return false
+    error("expected boolean value, got: $value")
+end
+
 function main(args=ARGS)
     nx = parse(Int, arg_value(args, "nx", "32"))
     ny = parse(Int, arg_value(args, "ny", "32"))
@@ -27,6 +33,7 @@ function main(args=ARGS)
     framerate = isempty(framerate_arg) ? nothing : parse(Int, framerate_arg)
     slice_hold_frames = parse(Int, arg_value(args, "slice-hold-frames", "1"))
     figure_size = parse(Int, arg_value(args, "figure-size", "800"))
+    show_axis_labels = parse_bool(arg_value(args, "show-axis-labels", "true"))
 
     mkpath(dirname(output))
     create_animation(nx, ny, nz, nt, nc, output;
@@ -39,6 +46,7 @@ function main(args=ARGS)
         framerate=framerate,
         slice_hold_frames=slice_hold_frames,
         figure_size=(figure_size, figure_size),
+        show_axis_labels=show_axis_labels,
         show_render_progress=true)
 end
 

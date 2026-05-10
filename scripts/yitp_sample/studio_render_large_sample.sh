@@ -11,10 +11,11 @@ preflight_log="${VLQCD_PREFLIGHT_LOG:-$workdir/logs/studio-render-preflight-$tim
 input="${VLQCD_RENDER_INPUT:-outputs/Conf32323264beta6.0-gf05hb40flow200.ildg}"
 output="${VLQCD_RENDER_OUTPUT:-outputs/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4}"
 orbit_turns="${VLQCD_CAMERA_ORBIT_TURNS:-1.0}"
-nloops="${VLQCD_RENDER_NLOOPS:-6}"
-framerate="${VLQCD_RENDER_FRAMERATE:-14}"
+nloops="${VLQCD_RENDER_NLOOPS:-7}"
+framerate="${VLQCD_RENDER_FRAMERATE:-17}"
 slice_hold_frames="${VLQCD_SLICE_HOLD_FRAMES:-2}"
 figure_size="${VLQCD_FIGURE_SIZE:-480}"
+show_axis_labels="${VLQCD_SHOW_AXIS_LABELS:-false}"
 preflight="${VLQCD_PREFLIGHT_DIAGNOSE:-1}"
 preflight_loader="${VLQCD_PREFLIGHT_LOADER:-ildg}"
 preflight_temp_count="${VLQCD_PREFLIGHT_TEMP_COUNT:-4}"
@@ -37,6 +38,7 @@ echo "nloops=$nloops"
 echo "framerate=$framerate"
 echo "slice_hold_frames=$slice_hold_frames"
 echo "figure_size=$figure_size"
+echo "show_axis_labels=$show_axis_labels"
 echo "preflight=$preflight"
 
 if [[ "$preflight" != "0" ]]; then
@@ -62,6 +64,7 @@ nohup "$julia_bin" "$julia_channel" --project=. --startup-file=no \
   --framerate "$framerate" \
   --slice-hold-frames "$slice_hold_frames" \
   --figure-size "$figure_size" \
+  --show-axis-labels "$show_axis_labels" \
   > "$log" 2>&1 &
 
 echo "pid=$!"

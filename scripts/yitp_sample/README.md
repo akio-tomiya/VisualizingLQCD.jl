@@ -214,10 +214,11 @@ The render script can also be controlled with:
 VLQCD_RENDER_INPUT=outputs/Conf32323264beta6.0-gf05hb40flow200.ildg
 VLQCD_RENDER_OUTPUT=outputs/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4
 VLQCD_CAMERA_ORBIT_TURNS=1.0
-VLQCD_RENDER_NLOOPS=6
-VLQCD_RENDER_FRAMERATE=14
+VLQCD_RENDER_NLOOPS=7
+VLQCD_RENDER_FRAMERATE=17
 VLQCD_SLICE_HOLD_FRAMES=2
 VLQCD_FIGURE_SIZE=480
+VLQCD_SHOW_AXIS_LABELS=false
 VLQCD_RENDER_LOG=/Users/akio/VisualizingLQCD-yitp-local-render/logs/studio-render-custom.log
 ```
 
@@ -225,13 +226,18 @@ The studio render wrapper also runs the same preflight diagnostic before
 starting the background render. Disable it only with
 `VLQCD_PREFLIGHT_DIAGNOSE=0` after a matching diagnostic log already exists.
 
-The full-turn README candidate uses `camera_orbit_turns=1.0`, `nloops=6`,
-`framerate=14`, `slice_hold_frames=2`, and `figure_size=480`. This gives `768`
-frames at `14` fps, about `55` seconds. The Euclidean fourth direction runs
-through all `64` slices exactly six times, with each slice held for two frames,
-while the camera makes one full turn. Do not make the README GIF by dropping
-frames from a higher-fps source; that can skip a nontrivial subset of
-fourth-direction slices and make the loop boundary look discontinuous.
+The full-turn README candidate uses `camera_orbit_turns=1.0`, `nloops=7`,
+`framerate=17`, `slice_hold_frames=2`, `figure_size=480`, and
+`show_axis_labels=false`. This gives `896` frames at `17` fps, about `52.7`
+seconds. The Euclidean fourth direction runs through all `64` slices exactly
+seven times, with each slice held for two frames, while the camera makes one
+full turn. This keeps the accepted camera orbit speed close to the accepted
+version and makes the fourth-direction motion about `1.21` times faster than
+the previous `nloops=6`, `14` fps sample. Axis labels are hidden for the README
+movie because their text can shimmer during the orbit. Do not make the README
+GIF by dropping frames from a higher-fps source; that can skip a nontrivial
+subset of fourth-direction slices and make the loop boundary look
+discontinuous.
 
 ## Convert MP4 to GIF
 
@@ -245,8 +251,8 @@ Manual conversion:
 julia --project=. --startup-file=no scripts/yitp_sample/convert_mp4_to_gif.jl \
   --input outputs/plaquette_3D_contour_animation32323264beta6.0.mp4 \
   --output outputs/plaquette_3D_contour_animation32323264beta6.0.gif \
-  --width 200 \
-  --fps 14
+  --width 480 \
+  --fps 17
 ```
 
 Batch conversion:
