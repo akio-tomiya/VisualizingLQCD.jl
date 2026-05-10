@@ -51,15 +51,33 @@ function finite_nonzero_abs_values(data)
     return values
 end
 
+function signed_nonzero_presence(data)
+    has_positive = false
+    has_negative = false
+    for x in data
+        if isfinite(x)
+            value = Float64(x)
+            has_positive |= value > 0
+            has_negative |= value < 0
+        end
+    end
+    return (positive=has_positive, negative=has_negative)
+end
+
 function signed_symmetric_levels(data; quantiles=CURRENT_TOPOLOGICAL_CHARGE_LEVEL_QUANTILES)
     values = finite_nonzero_abs_values(data)
     magnitudes = unique(sort(Float64.(quantile(values, collect(quantiles)))))
+    presence = signed_nonzero_presence(data)
     levels = Float64[]
-    for magnitude in reverse(magnitudes)
-        magnitude > 0 && push!(levels, -magnitude)
+    if presence.negative
+        for magnitude in reverse(magnitudes)
+            magnitude > 0 && push!(levels, -magnitude)
+        end
     end
-    for magnitude in magnitudes
-        magnitude > 0 && push!(levels, magnitude)
+    if presence.positive
+        for magnitude in magnitudes
+            magnitude > 0 && push!(levels, magnitude)
+        end
     end
     return levels
 end

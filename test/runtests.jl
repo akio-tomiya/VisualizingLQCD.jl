@@ -169,6 +169,10 @@ end
         quantiles=(0.0, 1.0)) == (1.0, 4.0)
     @test VisualizingLQCD.signed_symmetric_levels([-4.0, -2.0, 0.0, 3.0];
         quantiles=(0.0, 1.0)) == [-4.0, -2.0, 2.0, 4.0]
+    @test VisualizingLQCD.signed_symmetric_levels([0.0, 2.0, 4.0];
+        quantiles=(0.0, 1.0)) == [2.0, 4.0]
+    @test VisualizingLQCD.signed_symmetric_levels([-4.0, -2.0, 0.0];
+        quantiles=(0.0, 1.0)) == [-4.0, -2.0]
     @test VisualizingLQCD.signed_symmetric_color_range([-4.0, -2.0, 0.0, 3.0];
         quantile_level=1.0) == (-4.0, 4.0)
     @test_throws ArgumentError VisualizingLQCD.signed_symmetric_levels([0.0, 0.0])
@@ -276,6 +280,87 @@ end
     @test size(density) == (NX, NY, NZ, NT)
     @test maximum(abs.(density)) ≈ 0.0 atol = 1e-12
     @test VisualizingLQCD.topological_charge_from_density(density) ≈ 0.0 atol = 1e-12
+end
+
+@testset "SU(2) instanton density fixture contracts" begin
+    lattice = (16, 16, 16, 16)
+    center = (8, 8, 8, 8)
+    density = VisualizingLQCD.su2_instanton_topological_density(lattice;
+        rho=2.0, center=center, charge_sign=1)
+    diagnostics = VisualizingLQCD.topological_density_fixture_diagnostics(density)
+    @test size(density) == lattice
+    @test diagnostics["total_charge"] ≈ 1.0
+    @test diagnostics["max"]["index"] == collect(center)
+    @test diagnostics["min"]["value"] >= 0.0
+
+    anti_density = VisualizingLQCD.su2_instanton_topological_density(lattice;
+        rho=2.0, center=center, charge_sign=-1)
+    anti_diagnostics = VisualizingLQCD.topological_density_fixture_diagnostics(anti_density)
+    @test anti_diagnostics["total_charge"] ≈ -1.0
+    @test anti_diagnostics["min"]["index"] == collect(center)
+    @test anti_diagnostics["max"]["value"] <= 0.0
+
+    boundary_density = VisualizingLQCD.su2_instanton_topological_density(lattice;
+        rho=1.5, center=(1, 1, 1, 1), charge_sign=1)
+    boundary_diagnostics =
+        VisualizingLQCD.topological_density_fixture_diagnostics(boundary_density)
+    @test boundary_diagnostics["total_charge"] ≈ 1.0
+    @test boundary_diagnostics["max"]["index"] == [1, 1, 1, 1]
+
+    small_rho_density = VisualizingLQCD.su2_instanton_topological_density(lattice;
+        rho=1.2, center=center, charge_sign=1)
+    large_rho_density = VisualizingLQCD.su2_instanton_topological_density(lattice;
+        rho=3.0, center=center, charge_sign=1)
+    @test maximum(small_rho_density) > maximum(large_rho_density)
+    @test sum(small_rho_density) ≈ 1.0
+    @test sum(large_rho_density) ≈ 1.0
+
+    off_center_density = VisualizingLQCD.su2_instanton_topological_density(lattice;
+        rho=2.0, center=(8.5, 8.0, 8.0, 8.0), charge_sign=1)
+    @test sum(off_center_density) ≈ 1.0
+    @test VisualizingLQCD.topological_density_fixture_diagnostics(
+        off_center_density)["max"]["index"][1] in (8, 9)
+
+    diga_pp = VisualizingLQCD.su2_diga_topological_density(lattice, [
+        (rho=1.5, center=(5, 5, 5, 5), charge_sign=1),
+        (rho=1.5, center=(12, 12, 12, 12), charge_sign=1),
+    ])
+    @test sum(diga_pp) ≈ 2.0
+    @test VisualizingLQCD.topological_density_fixture_diagnostics(
+        diga_pp)["positive_charge"] ≈ 2.0
+
+    diga_pm = VisualizingLQCD.su2_diga_topological_density(lattice, [
+        (rho=1.5, center=(5, 5, 5, 5), charge_sign=1),
+        (rho=1.5, center=(12, 12, 12, 12), charge_sign=-1),
+    ])
+    diga_pm_diagnostics = VisualizingLQCD.topological_density_fixture_diagnostics(diga_pm)
+    @test diga_pm_diagnostics["total_charge"] ≈ 0.0 atol = 1e-12
+    @test diga_pm_diagnostics["max"]["value"] > 0.0
+    @test diga_pm_diagnostics["min"]["value"] < 0.0
+
+    diga_three = VisualizingLQCD.su2_diga_topological_density(lattice, [
+        (rho=1.5, center=(5, 5, 5, 5), charge_sign=1),
+        (rho=2.0, center=(12, 5, 12, 8), charge_sign=1),
+        (rho=1.8, center=(12, 12, 12, 12), charge_sign=-1),
+    ])
+    diga_three_diagnostics =
+        VisualizingLQCD.topological_density_fixture_diagnostics(diga_three)
+    @test diga_three_diagnostics["total_charge"] ≈ 1.0
+    @test diga_three_diagnostics["positive_charge"] > 1.0
+    @test diga_three_diagnostics["negative_charge"] < 0.0
+
+    setup = VisualizingLQCD.topological_charge_display_level_setup(diga_pm;
+        level_quantiles=(0.90, 0.99),
+        color_quantile=0.995)
+    @test setup.render_kind == :contour
+    @test minimum(setup.levels) < 0.0
+    @test maximum(setup.levels) > 0.0
+
+    metadata = VisualizingLQCD.su2_instanton_fixture_metadata(lattice;
+        rho=2.0, center=center, charge_sign=1)
+    @test metadata["kind"] == "continuum_su2_instanton_density"
+    @test metadata["is_gauge_field_solution"] == false
+    @test metadata["normalize_charge"] == true
 end
 
 @testset "Sample artifact contracts" begin
