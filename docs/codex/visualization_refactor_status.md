@@ -56,10 +56,17 @@ git diff --check
 result: pass before this memo update
 ```
 
+- User visual review pasted on 2026-05-10:
+  - all eight stills were marked visible:
+    `contour` and `volume` for slices `6`, `5`, `28`, and `27`;
+  - `volume / slice4=27` was marked `needs-work`, with the note that this is
+    not necessarily a required fix and that the visual appearance is good;
+  - this supports using the `24^3 x 32` config review path for human visual
+    checks, unlike the tiny `3^3 x 2` smoke pages.
 - User action needed next:
-  - open the review page above;
-  - inspect the contour and volume stills for the four selected slices;
-  - use the checkboxes and copy the generated review text back into the thread.
+  - PR #24 can be merged if the record-only memo update looks fine;
+  - after merge, generate a short movie or a denser still review around the
+    promising `slice4=27` volume view.
 
 ## Active note: 2026-05-10 topological-density config review
 
