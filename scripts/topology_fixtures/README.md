@@ -21,6 +21,11 @@ a full movie from a large configuration: it checks whether the contour/volume
 styles expose meaningful topological-density structure without spending frames
 on a full GLMakie `record` loop.
 
+`render_topological_density_config_movie.jl` uses the same configuration-level
+topological-density path, but writes one or more movies plus a review HTML page.
+It is a thin wrapper around `VisualizingLQCD.create_animation`, intended for
+small reviewed movie runs after the still-review page looks reasonable.
+
 The default smoke set is intentionally small. Use `--case-set debug` to add
 radius, off-center, spatial-boundary, same-sign DIGA, and three-lump checks.
 The display can also be tuned from the command line with `--style-preset`,
@@ -49,4 +54,6 @@ Run from the repository root:
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --case-set debug --style-preset all --render-mode volume --no-movie --output-dir /private/tmp/VisualizingLQCD-su2-instanton-fixtures-volume-review
 
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_review.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode both --slice4 auto --auto-slices 4 --output-dir /private/tmp/VisualizingLQCD-topological-config-review
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --camera-motion orbit --frame-mode sequence --nloops 1 --output-dir /private/tmp/VisualizingLQCD-topological-config-movie-review
 ```
