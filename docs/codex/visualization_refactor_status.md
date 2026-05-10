@@ -4,7 +4,55 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the `24^3 x 32` topological-density threshold review v2 run.
+Last updated on 2026-05-10 during the topological-volume `abs(q)` color PR.
+
+## Active note: 2026-05-10 topological-volume absolute-density color
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-volume-abs-color`.
+- Starting point: PR #32 was merged into `main`.
+- Goal:
+  - make the signed topological-density volume renderer closer to the
+    VisualQCD/Nobel reference style;
+  - keep the positive/negative sign split, but encode local `abs(q)` magnitude
+    within each sign by vertex color;
+  - adopt the user-selected `q0.940` lower body threshold as the package
+    default for topological-volume rendering.
+- Implemented:
+  - added topological-volume-specific default level quantiles
+    `(0.94, 0.999)`;
+  - added topological-volume-specific color quantile `0.999`;
+  - changed topological-volume mesh colors from constant sign colors to local
+    absolute topological-charge-density colors;
+  - positive volume palette progresses yellow/orange to red for larger
+    `abs(q)`;
+  - negative volume palette progresses cyan to blue for larger `abs(q)`;
+  - metadata now records color quantity, color method, sign encoding, palettes,
+    color ranges, and local color-stat parameters;
+  - the SU(2) fixture render helper now leaves quantile/color defaults as
+    `nothing` unless explicitly requested, so the package-level contour/volume
+    defaults are actually used.
+- Validation:
+  - `git diff --check` passed;
+  - `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl` passed;
+  - geometry/color smoke on a `24^4` DIGA-like scalar fixture produced nonempty
+    signed meshes with nonconstant colors:
+    `positive_colors=2375`, `negative_colors=2733`,
+    `positive_vertices=12644`, `negative_vertices=15152`.
+- Render-smoke caveat:
+  - a GLMakie still-render smoke with
+    `scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl` segfaulted
+    inside GLFW monitor/window setup while saving the first PNG;
+  - the stack points to local GL/window setup, not the scalar color/geometry
+    code path;
+  - before choosing the visual default for release/README, rerun a real GLMakie
+    review movie or still page on a known-good display/render machine.
 
 ## Active note: 2026-05-10 README action-density timing and scale
 

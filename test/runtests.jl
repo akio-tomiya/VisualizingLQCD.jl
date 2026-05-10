@@ -253,6 +253,20 @@ end
           collect(VisualizingLQCD.CURRENT_ACTION_DENSITY_COLOR_QUANTILES)
     @test VisualizingLQCD.action_density_blob_color(0.5; qmin=0.0, qmax=1.0) isa
           VisualizingLQCD.Vec3f
+    positive_low_color = VisualizingLQCD.topological_charge_volume_magnitude_color(
+        1.0; qmin=1.0, qmax=4.0,
+        palette=VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_PALETTE)
+    positive_high_color = VisualizingLQCD.topological_charge_volume_magnitude_color(
+        4.0; qmin=1.0, qmax=4.0,
+        palette=VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_PALETTE)
+    negative_low_color = VisualizingLQCD.topological_charge_volume_magnitude_color(
+        1.0; qmin=1.0, qmax=4.0,
+        palette=VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_PALETTE)
+    negative_high_color = VisualizingLQCD.topological_charge_volume_magnitude_color(
+        4.0; qmin=1.0, qmax=4.0,
+        palette=VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_PALETTE)
+    @test positive_low_color != positive_high_color
+    @test negative_low_color != negative_high_color
     @test VisualizingLQCD.local_color_value(ones(3, 3, 3), 2, 2, 2) == 1.0
     action_geometry = VisualizingLQCD.action_density_blob_geometry(
         fill(action_setup.body_level + 1, 2, 2, 2), action_setup;
@@ -315,6 +329,14 @@ end
     @test wide_topological_setup.contour_style.alpha ==
           VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_WIDE_ALPHA
 
+    default_topological_volume_setup = VisualizingLQCD.topological_charge_display_level_setup(
+        reshape([-4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0], 2, 2, 2, 1);
+        render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME)
+    @test default_topological_volume_setup.level_selection_info["quantiles"] ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_LEVEL_QUANTILES)
+    @test default_topological_volume_setup.render_style_info["color_quantile"] ==
+          VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_COLOR_QUANTILE
+
     topological_volume_setup = VisualizingLQCD.topological_charge_display_level_setup(
         reshape([-4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0], 2, 2, 2, 1);
         render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME,
@@ -332,6 +354,14 @@ end
           "topological_charge_volume_geometry"
     @test topological_volume_setup.render_style_info["positive_color"] ==
           collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_COLOR)
+    @test topological_volume_setup.render_style_info["color_method"] ==
+          "local_absolute_topological_charge_density_quantile"
+    @test topological_volume_setup.render_style_info["positive_color_palette"] ==
+          String(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_PALETTE)
+    @test topological_volume_setup.render_style_info["negative_color_palette"] ==
+          String(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_PALETTE)
+    @test topological_volume_setup.positive_color_range == (1.0, 4.0)
+    @test topological_volume_setup.negative_color_range == (1.0, 4.0)
     volume_slice = fill(2.0, 3, 3, 3)
     volume_slice[1, :, :] .= -2.0
     topological_volume_geometry = VisualizingLQCD.topological_charge_volume_geometry(
@@ -340,6 +370,24 @@ end
     @test topological_volume_geometry.negative !== nothing
     @test topological_volume_geometry.info["positive_info"].vertices > 0
     @test topological_volume_geometry.info["negative_info"].vertices > 0
+    gradient_slice = zeros(6, 3, 3)
+    gradient_slice[2, :, :] .= 1.2
+    gradient_slice[3, :, :] .= 2.0
+    gradient_slice[4, :, :] .= 3.0
+    gradient_slice[5, :, :] .= 4.0
+    gradient_setup = merge(topological_volume_setup, (
+        positive_body_level=1.0,
+        negative_body_level=nothing,
+        positive_color_range=(1.0, 4.0),
+        negative_color_range=nothing,
+        color_radius=0,
+        color_stat=:sample,
+        color_top_fraction=1.0,
+    ))
+    gradient_geometry = VisualizingLQCD.topological_charge_volume_geometry(
+        gradient_slice, gradient_setup; a=1.0, lattice_size=(6, 3, 3))
+    @test gradient_geometry.positive !== nothing
+    @test length(unique(gradient_geometry.positive.colors)) > 1
 end
 
 @testset "Topological charge density contracts" begin
