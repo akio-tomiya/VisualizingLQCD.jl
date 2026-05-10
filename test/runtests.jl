@@ -217,6 +217,25 @@ end
            VisualizingLQCD.display_transform_neglog(1.0)]
     @test VisualizingLQCD.topological_charge_display_transform_metadata()["raw_focus_for_upper_levels"] ==
           "positive_and_negative_topological_charge_density"
+    balanced_topological_style = VisualizingLQCD.topological_charge_style_preset_settings(
+        VisualizingLQCD.TOPOLOGICAL_CHARGE_STYLE_BALANCED)
+    @test balanced_topological_style.level_quantiles ==
+          VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_LEVEL_QUANTILES
+    @test balanced_topological_style.color_quantile ==
+          VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_COLOR_QUANTILE
+    @test balanced_topological_style.alpha == VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_ALPHA
+    @test balanced_topological_style.transparency ==
+          VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_TRANSPARENCY
+    wide_topological_style = VisualizingLQCD.topological_charge_style_preset_settings(
+        VisualizingLQCD.TOPOLOGICAL_CHARGE_STYLE_WIDE)
+    @test length(wide_topological_style.level_quantiles) == 3
+    @test wide_topological_style.alpha == VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_WIDE_ALPHA
+    @test wide_topological_style.transparency == balanced_topological_style.transparency
+    core_topological_style = VisualizingLQCD.topological_charge_style_preset_settings(
+        VisualizingLQCD.TOPOLOGICAL_CHARGE_STYLE_CORE)
+    @test minimum(core_topological_style.level_quantiles) >
+          minimum(balanced_topological_style.level_quantiles)
+    @test_throws ArgumentError VisualizingLQCD.validate_topological_charge_style_preset(:unknown)
     action_setup = VisualizingLQCD.action_density_blob_display_setup(
         reshape(collect(1.0:16.0), 2, 2, 2, 2))
     @test action_setup.render_kind == :mesh
@@ -246,7 +265,47 @@ end
     @test topological_setup.level_selection_info["level_target"] ==
           String(VisualizingLQCD.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY)
     @test topological_setup.render_style_info["render_style"] == "topological_charge_signed"
+    @test topological_setup.render_style_info["style_preset"] == "balanced"
     @test topological_setup.render_style_info["color_range"] == [-4.0, 4.0]
+    @test topological_setup.render_style_info["transparency"] == false
+    signed_specs = VisualizingLQCD.contour_plot_specs(
+        topological_setup.contour_style, topological_setup.levels)
+    @test length(signed_specs) == 2
+    @test all(<(0), signed_specs[1].levels)
+    @test all(>(0), signed_specs[2].levels)
+    @test signed_specs[1].style.colormap ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_NEGATIVE_COLORMAP)
+    @test signed_specs[2].style.colormap ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_POSITIVE_COLORMAP)
+
+    positive_only_setup = VisualizingLQCD.topological_charge_display_level_setup(
+        reshape([0.0, 1.0, 2.0, 4.0, 0.0, 1.0, 2.0, 4.0], 2, 2, 2, 1);
+        level_quantiles=(0.0, 1.0),
+        color_quantile=1.0)
+    positive_specs = VisualizingLQCD.contour_plot_specs(
+        positive_only_setup.contour_style, positive_only_setup.levels)
+    @test length(positive_specs) == 1
+    @test all(>(0), positive_specs[1].levels)
+    @test positive_specs[1].style.colormap ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_POSITIVE_COLORMAP)
+
+    negative_only_setup = VisualizingLQCD.topological_charge_display_level_setup(
+        reshape([0.0, -1.0, -2.0, -4.0, 0.0, -1.0, -2.0, -4.0], 2, 2, 2, 1);
+        level_quantiles=(0.0, 1.0),
+        color_quantile=1.0)
+    negative_specs = VisualizingLQCD.contour_plot_specs(
+        negative_only_setup.contour_style, negative_only_setup.levels)
+    @test length(negative_specs) == 1
+    @test all(<(0), negative_specs[1].levels)
+    @test negative_specs[1].style.colormap ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_NEGATIVE_COLORMAP)
+    wide_topological_setup = VisualizingLQCD.topological_charge_display_level_setup(
+        reshape([-4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0], 2, 2, 2, 1);
+        style_preset=VisualizingLQCD.TOPOLOGICAL_CHARGE_STYLE_WIDE,
+        color_quantile=1.0)
+    @test wide_topological_setup.render_style_info["style_preset"] == "wide"
+    @test wide_topological_setup.contour_style.alpha ==
+          VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_WIDE_ALPHA
 end
 
 @testset "Topological charge density contracts" begin

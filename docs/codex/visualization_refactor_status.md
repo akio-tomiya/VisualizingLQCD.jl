@@ -6,6 +6,274 @@ reference materials for status updates.
 
 Last updated on 2026-05-10 during the SU(2) instanton scalar-fixture pass.
 
+## Active note: 2026-05-10 topological-density style preset visibility
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-density-style-presets`.
+- PR: #21.
+- Issue found during visual review: the first smoke renders mixed visible and
+  invisible cases. `single-plus-small-rho` was blank for all presets, while
+  `single-plus-spatial-boundary` was blank for `balanced`/`wide` and visible
+  for `core`. Other centered/off-center/DIGA cases were visible.
+- Diagnosis:
+  - the scalar fixture data and selected levels were present in the rendered
+    slice, so this was not a missing-density problem;
+  - low 4D quantile levels plus too-low color ceilings can make GLMakie's 3D
+    contour effectively disappear for very peaked one-sign fixtures;
+  - anchoring the positive/negative color range at zero made blank cases
+    visible, but it also produced box-like low-level surfaces and broke the
+    clean centered-sphere appearance, so that route was rejected.
+- Current fix direction: keep the sign-separated contour implementation, but
+  move topological-density style presets to upper-tail quantiles:
+  - `balanced`: levels `(0.99, 0.999)`, color ceiling `0.9999`;
+  - `wide`: levels `(0.99, 0.995, 0.999)`, color ceiling `0.9999`;
+  - `core`: levels `(0.995, 0.9995)`, color ceiling `0.9999`.
+- Smoke candidates rendered before committing:
+
+```text
+/private/tmp/VisualizingLQCD-topology-style-proposed-balanced/view.html
+/private/tmp/VisualizingLQCD-topology-style-proposed-wide/view.html
+/private/tmp/VisualizingLQCD-topology-style-proposed-core/view.html
+/private/tmp/VisualizingLQCD-topology-style-proposed-contact.png
+```
+
+- Visual result: all debug cases are visible with the proposed presets, and the
+  centered/off-center cases remain sphere-like instead of box-like.
+- Interpretation of `single-plus-spatial-boundary`: the periodic boundary
+  condition is represented correctly as pieces wrapping across the fundamental
+  domain. It still looks like separated caps or a shell because a contour plot
+  is an iso-surface cut by the displayed box; it is a useful boundary diagnostic
+  but not a filled-volume visual.
+- Validation after applying the preset constants:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-style-balanced --case-set debug --style-preset balanced --no-movie
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-style-wide --case-set debug --style-preset wide --no-movie
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-style-core --case-set debug --style-preset core --no-movie
+result: pass
+
+pixel/color visibility classifier over all 27 PNGs
+result: all visible
+
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass
+
+git diff --check
+result: pass
+```
+
+## Active note: 2026-05-10 visual-check review IO
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-density-style-presets`.
+- User-review issue: reviewing separate `balanced`, `wide`, and `core` pages is
+  cumbersome, and reporting visible/missing cases back into Codex by hand is
+  error-prone.
+- Implemented review IO in
+  `scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl`:
+  - `--style-preset all` renders `balanced`, `wide`, and `core` into
+    subdirectories under one output directory and writes one combined
+    `view.html`;
+  - every image/video card has visual-check boxes: `visible`, `not visible`,
+    `good`, `shell/hollow`, and `needs work`;
+  - each card has a short free-text note field;
+  - the bottom of the page has a copyable textarea that updates live with
+    Markdown-style review notes;
+  - review state is saved in browser `localStorage` for the page path.
+- Reusable method memo:
+
+```text
+docs/codex/visual_review_io_methodology.md
+```
+
+- Current review page generated locally:
+
+```text
+file:///private/tmp/VisualizingLQCD-topology-style-review/view.html
+```
+
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-style-review --case-set debug --style-preset all --no-movie
+result: pass, 27 PNGs, one combined view.html
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-style-review-single --case-set basic --style-preset wide --no-movie
+result: pass, single-preset path still works
+
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass
+
+git diff --check
+result: pass
+```
+
+- Intended user workflow:
+  1. open the combined review page;
+  2. check boxes while visually inspecting each rendered case;
+  3. copy the bottom textarea with the `Copy review text` button;
+  4. paste the generated text back into the PR, issue, or Codex thread.
+- User visual review pasted on 2026-05-10:
+  - all listed cases are visible after the upper-tail preset change;
+  - `balanced / diga-plus-minus`: negative blue is hard to see;
+  - `balanced / single-plus-spatial-boundary`: shell-like;
+  - `balanced / diga-three-lump-plus-plus-minus`: visible but too faint;
+  - `wide / single-plus-spatial-boundary`: visible and shell-like;
+  - `wide / diga-three-lump-plus-plus-minus`: visible, but negative blue is
+    too faint;
+  - `core / single-plus-spatial-boundary`: visible and shell-like;
+  - general issue: grid/axis lines look missing or visually wrong because the
+    current translucent contours let axes/grid show through lumps.
+- Next visual-tuning hypothesis: make topology fixture contour surfaces opaque
+  or nearly opaque and brighten the negative colormap, while keeping the
+  boundary fixture as a known shell/cut-surface diagnostic.
+- Follow-up tuning after this review:
+  - rejected transparency/alpha-only changes because they still leave axes/grid
+    visually bleeding through surfaces;
+  - set topological-density contour transparency to `false` and alpha to `1.0`
+    for all three style presets;
+  - changed the negative signed colormap from `(:blue, :cyan)` to
+    `(:deepskyblue, :cyan)` to keep the negative sign blue-family while making
+    it readable on black backgrounds;
+  - regenerated the combined review page at the same path so browser refresh
+    shows the updated images.
+- Review UI persistence fix:
+  - initial review UI keyed `localStorage` only by `location.pathname`, which
+    caused old checkbox/note state to reappear after regenerating the same
+    `view.html`;
+  - the generated HTML now embeds a review-session id and includes it in the
+    `localStorage` key;
+  - the session id uses millisecond resolution so rapid regeneration of the
+    same review page is unlikely to reuse stale browser state;
+  - added a `Clear checks` button to reset the current review state explicitly;
+  - documented this pitfall in `docs/codex/visual_review_io_methodology.md`.
+- Validation for persistence fix:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-style-review --case-set debug --style-preset all --no-movie
+result: pass, generated HTML has review session id and Clear checks button
+
+prechecked input count in generated HTML
+result: 0
+
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass
+
+git diff --check
+result: pass
+```
+- Validation after opaque/negative-color follow-up:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-style-review --case-set debug --style-preset all --no-movie
+result: pass, 27 cards, 27 PNGs, no missing asset references
+
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass
+```
+- Second user visual review pasted on 2026-05-10 after opaque/negative-color
+  tuning:
+  - all `balanced`, `wide`, and `core` debug cases were marked `visible`;
+  - `balanced / single-plus-spatial-boundary` and
+    `wide / single-plus-spatial-boundary` were marked `shell`;
+  - no cases were marked `needs work`;
+  - this review supports keeping the opaque topology contour preset as the
+    current contour baseline.
+- New follow-up question: try a volume-rendering pattern similar to the current
+  action-density blob renderer. Because topological charge density is signed,
+  the safe design is to render positive and negative bodies separately, with
+  separate colors/meshes and metadata, rather than treating it as a single
+  positive scalar field.
+- Implemented a fixture-smoke prototype, not yet the main `create_animation`
+  renderer:
+  - `--render-mode contour` keeps the current signed contour output;
+  - `--render-mode volume` renders signed solid meshes by splitting
+    `max(q, 0)` and `max(-q, 0)`;
+  - `--render-mode both` emits both contour and volume cards in one review page;
+  - the volume path reuses the action-density blob solid-mesh extraction,
+    upsampling, post-smoothing, and Taubin mesh smoothing;
+  - positive volume color is opaque yellow, negative volume color is opaque
+    cyan-blue;
+  - review labels include `volume` for volume cards.
+- Current volume review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topology-volume-review/view.html
+```
+
+- Visual result from local inspection: centered and DIGA cases render as solid
+  positive/negative blobs. The spatial-boundary case still appears as separated
+  caps because the displayed fundamental domain cuts the periodic object, but it
+  reads more like a cut solid than a hollow transparent shell.
+- Validation for volume prototype:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-volume-review --case-set debug --style-preset all --render-mode volume --no-movie
+result: pass, 27 review cards
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-render-mode-both-smoke --case-set basic --style-preset wide --render-mode both --no-movie
+result: pass, 6 review cards
+
+git diff --check
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass
+```
+- User visual review pasted on 2026-05-10 for the volume review page:
+  - all `balanced / volume / ...` debug cases were marked `visible`;
+  - all `wide / volume / ...` debug cases were marked `visible`;
+  - all `core / volume / ...` debug cases were marked `visible`;
+  - no `shell`, `needs work`, or missing cases were reported for the volume
+    prototype in this review.
+- Current interpretation: the signed volume prototype is viable as a visual
+  diagnostic. It should remain clearly marked as a prototype/smoke path until
+  the same positive/negative solid-mesh approach is promoted into the main
+  `create_animation` renderer with explicit metadata and tests.
+- Final close-out validation for the branch:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-final-smoke --case-set basic --style-preset wide --render-mode both --no-movie
+result: pass, contour and volume cards generated in one review page
+
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass
+
+git diff --check
+result: pass
+```
+
 ## Active note: 2026-05-10 SU(2) instanton scalar fixtures
 
 - Machine: `Akios-MacBook-Air.local`.
@@ -1844,3 +2112,39 @@ Follow-up:
 - Use these scalar fixtures to tune signed topological-density defaults.
 - Later compare against a true SU(2)/SU(3) gauge-field instanton once that is
   available from Gaugefields.jl work.
+
+## 2026-05-10 Topological-Density Style Preset PR
+
+Goal: prepare topological charge-density visual tuning without changing the
+current default movie behavior abruptly.
+
+Small change:
+
+- Add named style presets for signed topological-density contours:
+  `balanced`, `wide`, and `core`.
+- Keep `balanced` equal to the current package defaults.
+- Use `wide` as the smoke-script default because it exposes more of the
+  scalar-instanton fixture body for visual review.
+- Let callers override levels, color quantile, and alpha exactly as before.
+
+Validation:
+
+- Unit tests check that `balanced` preserves the old constants and that
+  `wide`/`core` select distinct level/alpha settings.
+- `julia --project=. test/runtests.jl` passed.
+- SU(2) instanton smoke stills were generated with each preset:
+  `/private/tmp/VisualizingLQCD-topology-style-balanced/view.html`,
+  `/private/tmp/VisualizingLQCD-topology-style-wide/view.html`, and
+  `/private/tmp/VisualizingLQCD-topology-style-core/view.html`.
+
+Correction after visual review:
+
+- The first preset smoke pages did not show single-sign scalar fixtures.
+- Cause: topological signed contours were drawn in one GLMakie `contour!` call
+  with a symmetric color range. This made one-sign contour groups effectively
+  invisible even though the selected levels intersected the rendered slice.
+- Fix: split signed topological contours into negative and positive contour
+  groups. Negative levels use the negative colormap, positive levels use the
+  positive colormap, and both keep the same signed level selection.
+- Also raise the balanced/default topological color quantile from `0.995` to
+  `0.999`; the old value can make single-sign fixture contours disappear.

@@ -88,21 +88,30 @@ function plaquette_display_level_setup(raw_plaqs_t;
 end
 
 function topological_charge_display_level_setup(density_t;
-    level_quantiles=CURRENT_TOPOLOGICAL_CHARGE_LEVEL_QUANTILES,
-    color_quantile=CURRENT_TOPOLOGICAL_CHARGE_COLOR_QUANTILE,
+    style_preset=CURRENT_TOPOLOGICAL_CHARGE_STYLE_PRESET,
+    level_quantiles=nothing,
+    color_quantile=nothing,
     render_style=RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED,
     render_alpha=nothing,
     render_transparency=nothing)
 
     render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED ||
         throw(ArgumentError("topological charge density requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED"))
+    preset_settings = topological_charge_style_preset_settings(style_preset)
+    effective_level_quantiles = something(
+        level_quantiles, preset_settings.level_quantiles)
+    effective_color_quantile = something(
+        color_quantile, preset_settings.color_quantile)
     display_field = copy(density_t)
     level_summary = legacy_level_summary(display_field)
-    levels = signed_symmetric_levels(display_field; quantiles=level_quantiles)
+    levels = signed_symmetric_levels(display_field; quantiles=effective_level_quantiles)
     contour_style = topological_charge_signed_contour_style(display_field;
-        color_quantile=color_quantile,
-        alpha=something(render_alpha, CURRENT_TOPOLOGICAL_CHARGE_ALPHA),
-        transparency=something(render_transparency, CURRENT_TOPOLOGICAL_CHARGE_TRANSPARENCY))
+        color_quantile=effective_color_quantile,
+        colormap=preset_settings.colormap,
+        alpha=something(render_alpha, preset_settings.alpha),
+        transparency=something(render_transparency, preset_settings.transparency))
+    render_style_info = copy(contour_style.metadata)
+    render_style_info["style_preset"] = String(preset_settings.style_preset)
     return (
         render_kind=:contour,
         display_field=display_field,
@@ -110,9 +119,9 @@ function topological_charge_display_level_setup(density_t;
         levels=levels,
         display_transform_info=topological_charge_display_transform_metadata(),
         level_selection_info=topological_charge_level_selection_metadata(
-            levels, level_summary; quantiles=level_quantiles),
+            levels, level_summary; quantiles=effective_level_quantiles),
         contour_style=contour_style,
-        render_style_info=contour_style.metadata,
+        render_style_info=render_style_info,
         observable_info=topological_charge_density_observable_metadata(),
         title=TOPOLOGICAL_CHARGE_DENSITY_MOVIE_TITLE,
     )
@@ -128,6 +137,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     raw_high_color_quantiles=nothing,
     topological_level_quantiles=nothing,
     topological_color_quantile=nothing,
+    topological_style_preset=CURRENT_TOPOLOGICAL_CHARGE_STYLE_PRESET,
     render_style=nothing,
     render_alpha=nothing,
     render_transparency=nothing,
@@ -170,10 +180,9 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
             throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED"))
         density_t = topological_charge_density(U1, NX, NY, NZ, NT, NC)
         display_setup = topological_charge_display_level_setup(density_t;
-            level_quantiles=something(
-                topological_level_quantiles, CURRENT_TOPOLOGICAL_CHARGE_LEVEL_QUANTILES),
-            color_quantile=something(
-                topological_color_quantile, CURRENT_TOPOLOGICAL_CHARGE_COLOR_QUANTILE),
+            style_preset=topological_style_preset,
+            level_quantiles=topological_level_quantiles,
+            color_quantile=topological_color_quantile,
             render_style=effective_render_style,
             render_alpha=render_alpha,
             render_transparency=render_transparency)
@@ -298,17 +307,35 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     plot_obj = Ref{Any}(nothing)
     current_slice4 = Ref{Union{Nothing,Int}}(nothing)
     mesh_cache = Dict{Int,Any}()
+    function delete_plot_obj!(obj)
+        obj === nothing && return nothing
+        if obj isa AbstractVector
+            for item in obj
+                delete!(ax, item)
+            end
+        else
+            delete!(ax, obj)
+        end
+        return nothing
+    end
+
+    function contour_plot_group!(data, group_levels)
+        objects = Any[]
+        for spec in contour_plot_specs(display_setup.contour_style, group_levels)
+            contour_kwargs = contour_plot_kwargs(spec.style, spec.levels)
+            push!(objects, GLMakie.contour!(
+                ax, x_physical, y_physical, z_physical, data; contour_kwargs...))
+        end
+        return objects
+    end
+
     if display_setup.render_kind == :contour
         dummy_data = zeros(Float64, NX, NY, NZ)
-        dummy_kwargs = contour_plot_kwargs(display_setup.contour_style, [levels[1]])
-        plot_obj[] = GLMakie.contour!(ax, x_physical, y_physical, z_physical, dummy_data;
-            dummy_kwargs...)
+        plot_obj[] = contour_plot_group!(dummy_data, [levels[1]])
     end
 
     function draw_slice!(slice4)
-        if plot_obj[] !== nothing
-            delete!(ax, plot_obj[])
-        end
+        delete_plot_obj!(plot_obj[])
 
         plaqs = @view plaqs_t[:, :, :, slice4]
         ax.title = movie_title
@@ -325,9 +352,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
                     a=a, lattice_size=(NX, NY, NZ))
             end
         else
-            contour_kwargs = contour_plot_kwargs(display_setup.contour_style, levels)
-            plot_obj[] = GLMakie.contour!(ax, x_physical, y_physical, z_physical, plaqs;
-                contour_kwargs...)
+            plot_obj[] = contour_plot_group!(plaqs, levels)
         end
         limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
         current_slice4[] = slice4
