@@ -6,6 +6,83 @@ reference materials for status updates.
 
 Last updated on 2026-05-10 during the `24^3 x 32` topological-density threshold review v2 run.
 
+## Active note: 2026-05-10 README action-density timing and scale
+
+- Machine:
+  - editing and lightweight validation: `Akios-MacBook-Air.local`;
+  - heavy GLMakie media render: `studio1`.
+- Workdir:
+
+```text
+/private/tmp/VisualizingLQCD-readme-action-density
+```
+
+- Branch: `codex/readme-action-density-timing-scale`.
+- Note: this separate worktree was used so the unrelated topological-volume
+  branch in the main checkout stayed untouched.
+- User request:
+  - keep the accepted camera rotation speed approximately unchanged;
+  - make the Euclidean fourth-direction slice motion about `1.2x` faster;
+  - make the README display size `1.5x` larger.
+- Chosen README render settings:
+  - `camera_orbit_turns=1.0`;
+  - `nloops=7`;
+  - `framerate=17`;
+  - `slice_hold_frames=2`;
+  - `figure_size=(480, 480)`;
+  - `show_axis_labels=false` for the README movie;
+  - README/GIF width target `300` px.
+- Rationale:
+  - the old sample used `64 * 6 * 2 = 768` frames at `14` fps, about `54.9`
+    seconds;
+  - the new sample uses `64 * 7 * 2 = 896` frames at `17` fps, about `52.7`
+    seconds;
+  - this keeps the one-turn camera orbit close to the accepted speed while
+    making slice changes about `1.21x` faster in playback;
+  - exact `1.2x` with a closed periodic slice loop and integer video framerate
+    is awkward, so this is the closest simple integer-cadence adjustment.
+  - keep the source render at `480 x 480` because the README target is `300`
+    px; a first `720 x 720` attempt on `studio1` estimated about `90` minutes
+    and was cancelled before completion.
+- Render result:
+  - `studio1` produced the `480 x 480` MP4 from the known-good `32^3 x 64`
+    configuration in about `13:59`;
+  - MP4 probe: `480 x 480`, `17` fps, `896` frames, `52.705882` seconds;
+  - `studio1` did not have `ffmpeg` or `FFMPEG_jll` available for GIF
+    conversion, so the already-rendered `13` MB MP4 was copied back and
+    converted locally to a `300 x 300`, `17` fps, `896` frame GIF;
+  - no heavy GLMakie render was run on the MacBook Air.
+- Visual follow-up:
+  - the first `300` px GIF looked acceptable, but the GIF downscale was a bit
+    soft and the `z [fm]` axis label shimmered during the camera orbit;
+  - add `show_axis_labels` as a behavior-preserving render option, defaulting
+    to `true`;
+  - use `show_axis_labels=false` only for the README/YITP sample render so the
+    3D box and grid remain visible while axis text and tick labels are removed.
+  - `studio1` no-axis render result: `480 x 480`, `17` fps, `896` frames,
+    `52.705882` seconds, completed in `11:33`;
+  - review candidates:
+    - `file:///private/tmp/VisualizingLQCD-readme-action-density/readme-action-density-noaxis.mp4`;
+    - `file:///private/tmp/VisualizingLQCD-readme-action-density/readme-action-density-noaxis-300.gif`;
+    - `file:///private/tmp/VisualizingLQCD-readme-action-density/readme-action-density-noaxis-360.gif`;
+    - `file:///private/tmp/VisualizingLQCD-readme-action-density-view.html`.
+  - user review: `No-axis 360 px GIF displayed at 300 px` is the best current
+    GIF candidate among the first three, but it still looks blurry.
+  - future visual comparisons should use the visual-review IO pattern from
+    `docs/codex/visual_review_io_methodology.md`; for this pass, a review page
+    was generated at
+    `file:///private/tmp/VisualizingLQCD-readme-action-density-review/view.html`.
+  - extra sharpness-ceiling candidate:
+    `file:///private/tmp/VisualizingLQCD-readme-action-density/readme-action-density-noaxis-480.gif`;
+    this is `480 x 480`, `896` frames, and about `58` MB, so likely too heavy
+    for README unless the visual gain is clearly worth it.
+  - user review from the visual-review page: `no-axis / gif-480-displayed-300`
+    is the best candidate; `gif-360-displayed-300` is acceptable;
+    `gif-300-native` is blurry; MP4 reference is acceptable but still reads
+    blurry in-browser.
+  - Adopt the `480 x 480` no-axis GIF while keeping the README HTML display
+    width at `300` px.
+
 ## Active note: 2026-05-10 `24^3 x 32` topological-density movie review
 
 - Machine: `Akios-MacBook-Air.local`.
@@ -389,7 +466,6 @@ result: pass
 
 - Next before merge: visually review a real or semi-real gauge-field
   topological-density movie/still using the opt-in volume renderer.
-
 ## Active note: 2026-05-10 topological-density style preset visibility
 
 - Machine: `Akios-MacBook-Air.local`.
