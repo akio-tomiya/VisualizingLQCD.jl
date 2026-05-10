@@ -95,8 +95,9 @@ function topological_charge_display_level_setup(density_t;
     render_alpha=nothing,
     render_transparency=nothing)
 
-    render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED ||
-        throw(ArgumentError("topological charge density requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED"))
+    render_style in (RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED,
+        RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME) ||
+        throw(ArgumentError("topological charge density requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED or $RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME"))
     preset_settings = topological_charge_style_preset_settings(style_preset)
     effective_level_quantiles = something(
         level_quantiles, preset_settings.level_quantiles)
@@ -105,6 +106,43 @@ function topological_charge_display_level_setup(density_t;
     display_field = copy(density_t)
     level_summary = legacy_level_summary(display_field)
     levels = signed_symmetric_levels(display_field; quantiles=effective_level_quantiles)
+    level_selection_info = topological_charge_level_selection_metadata(
+        levels, level_summary; quantiles=effective_level_quantiles)
+    observable_info = topological_charge_density_observable_metadata()
+    if render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME
+        positive_body_level = smallest_positive_level(levels)
+        negative_body_level = smallest_negative_magnitude_level(levels)
+        alpha = something(render_alpha, CURRENT_TOPOLOGICAL_CHARGE_ALPHA)
+        transparency = something(render_transparency, false)
+        render_style_info = topological_charge_volume_style_metadata(
+            style_preset=preset_settings.style_preset,
+            positive_body_level=positive_body_level,
+            negative_body_level=negative_body_level,
+            level_quantiles=effective_level_quantiles,
+            color_quantile=effective_color_quantile,
+            alpha=alpha,
+            transparency=transparency)
+        return (
+            render_kind=:mesh,
+            mesh_renderer=:topological_charge_volume,
+            display_field=display_field,
+            level_summary=level_summary,
+            levels=levels,
+            positive_body_level=positive_body_level,
+            negative_body_level=negative_body_level,
+            positive_color=topological_charge_volume_color(
+                CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_COLOR; alpha=alpha),
+            negative_color=topological_charge_volume_color(
+                CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_COLOR; alpha=alpha),
+            transparency=transparency,
+            display_transform_info=topological_charge_display_transform_metadata(),
+            level_selection_info=level_selection_info,
+            render_style_info=render_style_info,
+            observable_info=observable_info,
+            title=TOPOLOGICAL_CHARGE_DENSITY_MOVIE_TITLE,
+        )
+    end
+
     contour_style = topological_charge_signed_contour_style(display_field;
         color_quantile=effective_color_quantile,
         colormap=preset_settings.colormap,
@@ -118,11 +156,10 @@ function topological_charge_display_level_setup(density_t;
         level_summary=level_summary,
         levels=levels,
         display_transform_info=topological_charge_display_transform_metadata(),
-        level_selection_info=topological_charge_level_selection_metadata(
-            levels, level_summary; quantiles=effective_level_quantiles),
+        level_selection_info=level_selection_info,
         contour_style=contour_style,
         render_style_info=render_style_info,
-        observable_info=topological_charge_density_observable_metadata(),
+        observable_info=observable_info,
         title=TOPOLOGICAL_CHARGE_DENSITY_MOVIE_TITLE,
     )
 end
@@ -177,8 +214,9 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         action_density_t = local_action_density(U1, NX, NY, NZ, NT, NC)
         display_setup = action_density_blob_display_setup(action_density_t)
     elseif level_target == LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY
-        effective_render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED ||
-            throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED"))
+        effective_render_style in (RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED,
+            RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME) ||
+            throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED or $RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME"))
         density_t = topological_charge_density(U1, NX, NY, NZ, NT, NC)
         display_setup = topological_charge_display_level_setup(density_t;
             style_preset=topological_style_preset,
@@ -349,7 +387,20 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         ax.title = movie_title
 
         if display_setup.render_kind == :mesh
-            if cache_active
+            if hasproperty(display_setup, :mesh_renderer) &&
+               display_setup.mesh_renderer == :topological_charge_volume
+                if cache_active
+                    geometry = get!(mesh_cache, slice4) do
+                        topological_charge_volume_geometry(plaqs, display_setup;
+                            a=a, lattice_size=(NX, NY, NZ))
+                    end
+                    plot_obj[], _ = topological_charge_volume_plot!(ax, geometry)
+                else
+                    geometry = topological_charge_volume_geometry(plaqs, display_setup;
+                        a=a, lattice_size=(NX, NY, NZ))
+                    plot_obj[], _ = topological_charge_volume_plot!(ax, geometry)
+                end
+            elseif cache_active
                 geometry = get!(mesh_cache, slice4) do
                     action_density_blob_geometry(plaqs, display_setup;
                         a=a, lattice_size=(NX, NY, NZ))

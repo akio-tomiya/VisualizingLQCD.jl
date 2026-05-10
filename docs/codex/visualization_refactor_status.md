@@ -4,7 +4,7 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the README action-density timing pass.
+Last updated on 2026-05-10 during the README action-density media conflict resolution.
 
 ## Active note: 2026-05-10 README action-density timing and scale
 
@@ -83,6 +83,323 @@ Last updated on 2026-05-10 during the README action-density timing pass.
   - Adopt the `480 x 480` no-axis GIF while keeping the README HTML display
     width at `300` px.
 
+## Active note: 2026-05-10 `24^3 x 32` topological-density movie review
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-movie-24x32-result`.
+- Starting point: PR #27 was merged into `main`.
+- Goal: use the new config movie helper on the real `24^3 x 32` configuration
+  and produce a reviewable topological-charge-density movie.
+- Input:
+
+```text
+/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+```
+
+- Command:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --camera-motion orbit --frame-mode sequence --nloops 2 --framerate 8 --figure-size 480 --show-render-progress true --output-dir /private/tmp/VisualizingLQCD-topological-config-movie-24x32
+```
+
+- Output review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-config-movie-24x32/view.html
+```
+
+- Output files:
+  - `topological_density_config_movie.mp4`, about `3.7M`;
+  - `topological_density_config_movie.mp4.metadata.json`, about `4.9K`;
+  - `view.html`, about `14K`.
+- Metadata check:
+  - lattice size: `[24, 24, 24, 32]`;
+  - render style: `topological_charge_volume`;
+  - mesh source: `topological_charge_volume_geometry`;
+  - frame count: `64`;
+  - framerate: `8`;
+  - duration: `8.0` seconds;
+  - frame mode: `slice4_sequence`;
+  - cached slice count: `32`;
+  - interpretation still records `not_real_time_minkowski_evolution=true`.
+- Quick visual sanity:
+  - QuickLook thumbnail generation succeeded;
+  - thumbnail shows non-empty signed yellow/blue volume meshes;
+  - detailed visual quality is not judged yet and needs user review in the
+    generated HTML page.
+- Validation:
+  - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl` on
+    `main` before the movie run.
+- User action needed:
+  - open the output review page, inspect the movie, and paste the generated
+    checkbox/comment review text back into the thread.
+
+## Active note: 2026-05-10 topological-density config movie review helper
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-config-movie-review`.
+- Starting point: PR #26 was merged into `main`.
+- Goal: move from topological-density still review to a small, reviewable
+  configuration movie workflow without changing the core renderer.
+- Implemented:
+  - add `scripts/topology_fixtures/render_topological_density_config_movie.jl`;
+  - the script wraps `VisualizingLQCD.create_animation` with
+    `level_target=:topological_charge_density`;
+  - it supports contour, volume, or both movie modes and writes a local review
+    HTML page with the same checkbox/comment UI used by still reviews;
+  - correct the topological volume metadata `mesh_source` from the reused
+    action-density name to `topological_charge_volume_geometry`;
+  - document the command in `scripts/topology_fixtures/README.md`.
+- Validation:
+  - rendered a tiny `3^3 x 2` volume smoke movie from
+    `/private/tmp/VisualizingLQCD-topoconfig-hot-3322.ildg`;
+  - confirmed the generated review HTML contains the movie metadata, frame map,
+    and visual-review comment tags;
+  - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl`;
+  - passed `/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'`;
+  - passed `git diff --check`.
+- Smoke output review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-config-movie-smoke/view.html
+```
+
+## Active note: 2026-05-10 visual-review comment tags
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/visual-review-comment-tags`.
+- Starting point: PR #25 was merged into `main`.
+- User feedback:
+  - the `needs work` checkbox was being used as a workaround for neutral or
+    positive comments;
+  - reviewers need an obvious place to leave comments that are not fix requests.
+- Implemented:
+  - add `notable / promising` and `comment only` checkboxes to both topology
+    visual review pages;
+  - clarify the note placeholder: note-only rows are copied into the generated
+    review text;
+  - update `docs/codex/visual_review_io_methodology.md` so future visual review
+    pages do not force comments through `needs work`.
+- Validation:
+  - generated a fixture visual-review page with
+    `scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl`;
+  - generated a config visual-review page with
+    `scripts/topology_fixtures/render_topological_density_config_review.jl`;
+  - confirmed the generated HTML contains `notable / promising`,
+    `comment only`, and the note-only placeholder text;
+  - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl`;
+  - passed `/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'`.
+
+## Active note: 2026-05-10 `24^3 x 32` topological-density config review
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-config-review-24x32-result`.
+- Starting point: PR #23 was merged into `main`.
+- Goal: run the new config-level still-review script on a real `24^3 x 32`
+  ILDG configuration before attempting a full topological-density movie.
+- Input:
+
+```text
+/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+```
+
+- Output review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-config-review-24x32/view.html
+```
+
+- Command:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_review.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode both --slice4 auto --auto-slices 4 --figure-size 560 --output-dir /private/tmp/VisualizingLQCD-topological-config-review-24x32
+```
+
+- Result:
+  - run completed locally; no remote machine was needed for still review;
+  - selected slices: `6`, `5`, `28`, `27`;
+  - generated four contour PNGs, four volume PNGs, and `view.html`;
+  - output size: about `1.3M`;
+  - total topological charge from the clover density: approximately `0.023`;
+  - density range: approximately `[-0.001479, 0.001732]`;
+  - default balanced upper-tail volume levels produced non-empty positive and
+    negative meshes for all four selected slices.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass before the `24^3 x 32` review run
+
+git diff --check
+result: pass before this memo update
+```
+
+- User visual review pasted on 2026-05-10:
+  - all eight stills were marked visible:
+    `contour` and `volume` for slices `6`, `5`, `28`, and `27`;
+  - `volume / slice4=27` was marked `needs-work`, with the note that this is
+    not necessarily a required fix and that the visual appearance is good;
+  - this supports using the `24^3 x 32` config review path for human visual
+    checks, unlike the tiny `3^3 x 2` smoke pages.
+- User action needed next:
+  - PR #24 can be merged if the record-only memo update looks fine;
+  - after merge, generate a short movie or a denser still review around the
+    promising `slice4=27` volume view.
+
+## Active note: 2026-05-10 topological-density config review
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-config-review`.
+- Starting point: PR #22 was merged into `main`.
+- Goal for this small PR: add a low-cost visual validation path for real or
+  semi-real gauge configurations before spending time on full topological
+  density movies.
+- Implemented:
+  - new script
+    `scripts/topology_fixtures/render_topological_density_config_review.jl`;
+  - it loads an ILDG gauge configuration, computes clover topological charge
+    density, selects fourth-direction slices, and writes still PNGs plus a
+    review HTML page;
+  - `--render-mode contour`, `--render-mode volume`, and `--render-mode both`
+    are supported;
+  - `--slice4 auto` selects slices with largest `max(abs(q))`; explicit comma
+    lists such as `--slice4 1,8,16` are also supported;
+  - the review HTML reuses the checkbox/copy-text workflow used by the SU(2)
+    scalar fixture review pages.
+- Local configuration inventory:
+  - `/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg`;
+  - size: about `243M`;
+  - use this for the next visual review, preferably as stills first rather than
+    a full movie.
+- Validation so far:
+
+```text
+tiny hot 3x3x3x2 ILDG configuration generated under /private/tmp
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_review.jl --nx 3 --ny 3 --nz 3 --nt 2 --nc 3 --beta 6.0 --input /private/tmp/VisualizingLQCD-topoconfig-hot-3322.ildg --render-mode both --slice4 auto --auto-slices 2 --figure-size 320 --output-dir /private/tmp/VisualizingLQCD-topological-config-review-smoke
+result: pass, contour/volume still review page generated
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_review.jl --nx 3 --ny 3 --nz 3 --nt 2 --nc 3 --beta 6.0 --input /private/tmp/VisualizingLQCD-topoconfig-hot-3322.ildg --render-mode both --slice4 auto --auto-slices 2 --level-quantiles 0.5,0.9 --figure-size 320 --output-dir /private/tmp/VisualizingLQCD-topological-config-review-smoke-lowq
+result: pass, volume mesh info is non-empty for both selected slices
+
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass
+
+git diff --check
+result: pass
+```
+
+- Note:
+  - on a `3^3 x 2` smoke configuration, default topological upper-tail
+    quantiles can legitimately produce empty volume meshes after smoothing;
+  - the low-quantile smoke is only to exercise the mesh path on tiny data, not
+    a suggested physical display default.
+- User visual review on 2026-05-10:
+  - `/private/tmp/VisualizingLQCD-topological-config-review-smoke/view.html`
+    looked empty;
+  - the low-quantile smoke page showed visible objects, but the contour cases
+    were shell-like and not useful, and the volume case looked low-poly;
+  - conclusion: these tiny `3^3 x 2` pages are code-path smoke tests only and
+    should not be used for visual-quality judgment;
+  - future review requests to the user should be explicit about what action is
+    needed, and should target meaningful `24^3 x 32` or larger configuration
+    outputs rather than tiny smoke pages.
+- Next validation before/after PR:
+  - run unit tests and `Pkg.test()`;
+  - run the new script on the `24^3 x 32` Dropbox configuration. If it is slow
+    on the MacBook Air, move that run to `studio1` or `notegpu1`.
+
+## Active note: 2026-05-10 topological-density volume renderer
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-volume-renderer`.
+- Starting point: PR #21 was merged into `main`.
+- Goal for this small PR: promote the signed topological-density volume
+  prototype from the fixture smoke script into the main rendering helpers while
+  keeping the existing contour renderer available.
+- Implemented:
+  - new opt-in render style `RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME`;
+  - `topological_charge_display_level_setup(...;
+    render_style=RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME)` returns a mesh
+    render setup;
+  - positive and negative density bodies are split as `max(q, 0)` and
+    `max(-q, 0)`, then rendered as separate solid meshes;
+  - the mesh path reuses the action-density blob geometry pipeline
+    (periodic smoothing, upsampling, post smoothing, Taubin mesh smoothing);
+  - metadata records positive/negative body levels, sign colors, geometry
+    method, smoothing parameters, and mesh source;
+  - the topology fixture script now calls the package helper instead of keeping
+    its own duplicate volume prototype.
+- Deliberate choice:
+  - default topological-density rendering remains
+    `RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED` for now;
+  - volume rendering is opt-in until it is checked on real gauge-field
+    topological density, not only scalar SU(2) fixtures.
+- Validation so far:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-volume-main-pr2 --case-set basic --style-preset wide --render-mode both --no-movie
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-volume-main-debug --case-set debug --style-preset all --render-mode volume --no-movie
+result: pass, 27 PNG cards plus view.html
+
+local create_animation smoke with a tiny hot 3x3x3x2 gauge field and
+render_style=RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME
+result: pass, MP4 and metadata written under /private/tmp
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass
+
+git diff --check
+result: pass
+```
+
+- Next before merge: visually review a real or semi-real gauge-field
+  topological-density movie/still using the opt-in volume renderer.
 ## Active note: 2026-05-10 topological-density style preset visibility
 
 - Machine: `Akios-MacBook-Air.local`.

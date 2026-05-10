@@ -216,6 +216,9 @@ end
     @test VisualizingLQCD.effective_render_theme(
         VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED, nothing) ==
           VisualizingLQCD.RENDER_THEME_DARK
+    @test VisualizingLQCD.effective_render_theme(
+        VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME, nothing) ==
+          VisualizingLQCD.RENDER_THEME_DARK
 
     @test VisualizingLQCD.transform_field_neglog([0.0, 1.0]) ≈
           [VisualizingLQCD.display_transform_neglog(0.0),
@@ -311,6 +314,32 @@ end
     @test wide_topological_setup.render_style_info["style_preset"] == "wide"
     @test wide_topological_setup.contour_style.alpha ==
           VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_WIDE_ALPHA
+
+    topological_volume_setup = VisualizingLQCD.topological_charge_display_level_setup(
+        reshape([-4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0], 2, 2, 2, 1);
+        render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME,
+        level_quantiles=(0.0, 1.0),
+        color_quantile=1.0)
+    @test topological_volume_setup.render_kind == :mesh
+    @test topological_volume_setup.mesh_renderer == :topological_charge_volume
+    @test topological_volume_setup.positive_body_level == 1.0
+    @test topological_volume_setup.negative_body_level == 1.0
+    @test topological_volume_setup.render_style_info["render_style"] ==
+          "topological_charge_volume"
+    @test topological_volume_setup.render_style_info["geometry"] ==
+          "signed_positive_negative_filled_superlevel_solid_mesh"
+    @test topological_volume_setup.render_style_info["mesh_source"] ==
+          "topological_charge_volume_geometry"
+    @test topological_volume_setup.render_style_info["positive_color"] ==
+          collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_COLOR)
+    volume_slice = fill(2.0, 3, 3, 3)
+    volume_slice[1, :, :] .= -2.0
+    topological_volume_geometry = VisualizingLQCD.topological_charge_volume_geometry(
+        volume_slice, topological_volume_setup; a=1.0, lattice_size=(3, 3, 3))
+    @test topological_volume_geometry.positive !== nothing
+    @test topological_volume_geometry.negative !== nothing
+    @test topological_volume_geometry.info["positive_info"].vertices > 0
+    @test topological_volume_geometry.info["negative_info"].vertices > 0
 end
 
 @testset "Topological charge density contracts" begin
