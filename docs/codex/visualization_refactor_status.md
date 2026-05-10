@@ -4,7 +4,96 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the topological-density README sample candidate run.
+Last updated on 2026-05-10 during the half-speed topological-density README
+sample candidate run.
+
+## Active note: 2026-05-10 half-speed topological-density README sample
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-readme-sample-halfspeed`.
+- Starting point: PR #36 was merged into `main`.
+- Goal:
+  - respond to the README sample visual review that selected
+    `no-axis / gif 300 native` as the best candidate but requested half the
+    rotation speed;
+  - keep the fourth-direction slice speed unchanged while slowing only the
+    camera orbit.
+- User visual review that started this pass:
+
+```text
+# VisualizingLQCD topological-density README sample visual check
+
+source: file:///private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/view.html
+session: 1778420001
+updated: 2026-05-10T12:38:45.441Z
+
+- axis / mp4 accepted review: visible
+- no-axis / mp4: visible
+- no-axis / gif 300 native: visible, best README | note: 回転速度半分なら完璧
+- no-axis / gif 480 native: visible, good
+```
+
+- Input configuration:
+
+```text
+/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+```
+
+- Half-speed render command:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; create_animation(24, 24, 24, 32, 3, "/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/halfspeed/topological_density_noaxis_halfspeed.mp4"; beta=6.0, filename="/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg", metadata_filename="/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/halfspeed/topological_density_noaxis_halfspeed.mp4.metadata.json", level_target=VisualizingLQCD.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY, render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME, camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT, frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE, nloops=4, framerate=8, figure_size=(480, 480), show_render_progress=true, show_axis_labels=false)'
+```
+
+- Review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/view.html
+```
+
+- Candidate files:
+  - half-speed no-axis MP4:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/halfspeed/topological_density_noaxis_halfspeed.mp4`,
+    about `6.2M`;
+  - half-speed metadata:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/halfspeed/topological_density_noaxis_halfspeed.mp4.metadata.json`,
+    about `7.3K`;
+  - half-speed Quick Look thumbnail:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/halfspeed/topological_density_noaxis_halfspeed.mp4.png`,
+    about `554K`;
+  - half-speed `300 x 300` GIF:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/halfspeed/topological_density_noaxis_halfspeed_300.gif`,
+    about `2.2M`;
+  - half-speed `480 x 480` GIF:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/halfspeed/topological_density_noaxis_halfspeed_480.gif`,
+    about `4.9M`.
+- Validation:
+  - half-speed GLMakie render completed `128` frames in about `1:46`;
+  - metadata confirms `show_axis_labels=false`, `frame_count=128`,
+    `duration_seconds=16.0`, `nloops=4`, `framerate=8`,
+    `level_quantiles=[0.94,0.999]`, and
+    `color_method=local_absolute_topological_charge_density_quantile`;
+  - review page session was updated to `1778421901` and now includes
+    half-speed MP4, `300 x 300` GIF, and `480 x 480` GIF cards;
+  - Quick Look thumbnail generation succeeded;
+  - `ffmpeg` generated both half-speed GIF candidates successfully;
+  - `git diff --check` passed;
+  - `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl` passed.
+- Current interpretation:
+  - previous candidate used `nloops=2`, `framerate=8`, and `64` frames;
+  - half-speed candidate uses `nloops=4`, `framerate=8`, and `128` frames;
+  - this preserves the fourth-direction slice cadence and halves only the
+    camera orbit speed.
+- User action needed:
+  - open the review page above and check `no-axis / gif 300 half-speed`;
+  - if accepted, the next PR should replace or add the README sample GIF using
+    the selected half-speed artifact and keep the displayed README size modest.
 
 ## Active note: 2026-05-10 topological-density README sample candidates
 
