@@ -162,7 +162,7 @@ function topological_charge_volume_style_metadata(;
         "negative_color" => collect(CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_COLOR),
         "alpha" => alpha,
         "transparency" => transparency,
-        "mesh_source" => "action_density_blob_geometry",
+        "mesh_source" => "topological_charge_volume_geometry",
         "pre_smooth" => Dict(
             "boundary" => "periodic",
             "weight" => CURRENT_ACTION_DENSITY_SMOOTH_WEIGHT,

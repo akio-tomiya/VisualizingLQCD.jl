@@ -323,6 +323,8 @@ end
           "topological_charge_volume"
     @test topological_volume_setup.render_style_info["geometry"] ==
           "signed_positive_negative_filled_superlevel_solid_mesh"
+    @test topological_volume_setup.render_style_info["mesh_source"] ==
+          "topological_charge_volume_geometry"
     @test topological_volume_setup.render_style_info["positive_color"] ==
           collect(VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_COLOR)
     volume_slice = fill(2.0, 3, 3, 3)

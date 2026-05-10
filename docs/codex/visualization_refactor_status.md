@@ -25,6 +25,8 @@ Last updated on 2026-05-10 during the topological-density config movie helper pa
     `level_target=:topological_charge_density`;
   - it supports contour, volume, or both movie modes and writes a local review
     HTML page with the same checkbox/comment UI used by still reviews;
+  - correct the topological volume metadata `mesh_source` from the reused
+    action-density name to `topological_charge_volume_geometry`;
   - document the command in `scripts/topology_fixtures/README.md`.
 - Validation:
   - rendered a tiny `3^3 x 2` volume smoke movie from
