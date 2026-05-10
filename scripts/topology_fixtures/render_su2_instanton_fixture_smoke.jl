@@ -427,9 +427,11 @@ function write_review_controls(io, result)
 <label><input type="checkbox" data-kind="visible"> visible</label>
 <label><input type="checkbox" data-kind="missing"> not visible</label>
 <label><input type="checkbox" data-kind="good"> good</label>
+<label><input type="checkbox" data-kind="notable / promising"> notable / promising</label>
+<label><input type="checkbox" data-kind="comment only"> comment only</label>
 <label><input type="checkbox" data-kind="shell"> shell/hollow</label>
 <label><input type="checkbox" data-kind="needs-work"> needs work</label>
-<input class="review-note" type="text" data-note placeholder="short note for $label">
+<input class="review-note" type="text" data-note placeholder="optional comment for $label; note-only rows are copied too">
 </div>
 """)
 end
