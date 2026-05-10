@@ -4,7 +4,7 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the `24^3 x 32` topological-density threshold review run.
+Last updated on 2026-05-10 during the `24^3 x 32` topological-density threshold review v2 run.
 
 ## Active note: 2026-05-10 `24^3 x 32` topological-density movie review
 
@@ -15,7 +15,10 @@ Last updated on 2026-05-10 during the `24^3 x 32` topological-density threshold 
 /Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
 ```
 
-- Branch: `codex/topological-movie-24x32-result`.
+- Branches:
+  - `codex/topological-movie-24x32-result` for the first movie result record;
+  - `codex/topological-threshold-review-24x32-result` for threshold-review
+    follow-up records.
 - Starting point: PR #27 was merged into `main`.
 - Goal: use the new config movie helper on the real `24^3 x 32` configuration
   and produce a reviewable topological-charge-density movie.
@@ -85,16 +88,46 @@ updated: 2026-05-10T07:00:01.858Z
 file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view.html
 ```
 
+- User threshold review pasted on 2026-05-10:
+
+```text
+# VisualizingLQCD topological-density threshold movie visual check
+
+source: file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view.html
+session: 1778396777
+updated: 2026-05-10T07:16:39.357Z
+
+- baseline q0.990 body: visible, too small
+- q0.985 body: visible, too small
+- q0.980 body: visible
+- q0.970 body: visible, comment only | note: まだしきい値を下げてもいいかも。
+```
+
+- Generated threshold-review v2 candidates:
+  - retain `q0.980` and `q0.970` for continuity;
+  - add `q0.960`, body level approximately `2.3423e-4`;
+  - add `q0.950`, body level approximately `2.1657e-4`.
+- Threshold comparison review v2 page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view-v2.html
+```
+
 - Validation:
   - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl` on
     `main` before the movie run.
   - generated all three lower-threshold candidate movies without errors;
   - confirmed the threshold comparison page contains all four candidates and
     the `too small` / `too large or noisy` visual-review controls.
+  - generated `q0.960` and `q0.950` v2 candidate movies without errors;
+  - confirmed the v2 comparison page contains `q0.980`, `q0.970`, `q0.960`,
+    `q0.950`, plus `best default`, `too small`, and `too large or noisy`
+    review controls.
+  - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl`
+    after recording the v2 threshold candidates.
 - User action needed:
-  - open the threshold comparison review page, inspect the movies, and paste the
-    generated checkbox/comment review text back into the thread.
-    checkbox/comment review text back into the thread.
+  - open the threshold comparison v2 review page, inspect the movies, and paste
+    the generated checkbox/comment review text back into the thread.
 
 ## Active note: 2026-05-10 topological-density config movie review helper
 
