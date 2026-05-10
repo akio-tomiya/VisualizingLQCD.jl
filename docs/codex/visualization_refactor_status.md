@@ -4,7 +4,70 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the topological-density documentation PR.
+Last updated on 2026-05-10 during the topological-density README sample candidate run.
+
+## Active note: 2026-05-10 topological-density README sample candidates
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-readme-sample-candidates`.
+- Starting point: PR #35 was merged into `main`.
+- Goal:
+  - prepare candidate media for a possible README/public topological-density
+    sample without changing tracked media yet;
+  - compare the accepted axis-label movie against a no-axis README-oriented
+    version.
+- Input configuration:
+
+```text
+/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+```
+
+- No-axis render command:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; create_animation(24, 24, 24, 32, 3, "/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/noaxis/topological_density_noaxis.mp4"; beta=6.0, filename="/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg", metadata_filename="/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/noaxis/topological_density_noaxis.mp4.metadata.json", level_target=VisualizingLQCD.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY, render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME, camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT, frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE, nloops=2, framerate=8, figure_size=(480, 480), show_render_progress=true, show_axis_labels=false)'
+```
+
+- Review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/view.html
+```
+
+- Candidate files:
+  - no-axis MP4:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/noaxis/topological_density_noaxis.mp4`,
+    about `3.6M`;
+  - no-axis metadata:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/noaxis/topological_density_noaxis.mp4.metadata.json`,
+    about `5.5K`;
+  - no-axis Quick Look thumbnail:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/noaxis/topological_density_noaxis.mp4.png`,
+    about `556K`;
+  - no-axis `300 x 300` GIF:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/noaxis/topological_density_noaxis_300.gif`,
+    about `1.1M`;
+  - no-axis `480 x 480` GIF:
+    `/private/tmp/VisualizingLQCD-topological-sample-candidates-24x32/noaxis/topological_density_noaxis_480.gif`,
+    about `2.4M`.
+- Validation:
+  - PR #35 was merged and `main` was fast-forwarded before recording this note;
+  - no-axis GLMakie render completed `64` frames in about `1:13`;
+  - metadata confirms `show_axis_labels=false`, `level_quantiles=[0.94,0.999]`,
+    `color_method=local_absolute_topological_charge_density_quantile`, and
+    `frame_count=64`;
+  - Quick Look thumbnail generation succeeded;
+  - `ffmpeg` generated both GIF candidates successfully.
+- User action needed:
+  - open the review page above and choose the README/public sample candidate;
+  - likely candidates are `no-axis / gif 480 native` displayed at `300` px or
+    `no-axis / mp4` if README media policy switches to video.
 
 ## Active note: 2026-05-10 topological-density documentation
 
