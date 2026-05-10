@@ -4,7 +4,64 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the topological-density config movie helper pass.
+Last updated on 2026-05-10 during the `24^3 x 32` topological-density movie review run.
+
+## Active note: 2026-05-10 `24^3 x 32` topological-density movie review
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-movie-24x32-result`.
+- Starting point: PR #27 was merged into `main`.
+- Goal: use the new config movie helper on the real `24^3 x 32` configuration
+  and produce a reviewable topological-charge-density movie.
+- Input:
+
+```text
+/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+```
+
+- Command:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --camera-motion orbit --frame-mode sequence --nloops 2 --framerate 8 --figure-size 480 --show-render-progress true --output-dir /private/tmp/VisualizingLQCD-topological-config-movie-24x32
+```
+
+- Output review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-config-movie-24x32/view.html
+```
+
+- Output files:
+  - `topological_density_config_movie.mp4`, about `3.7M`;
+  - `topological_density_config_movie.mp4.metadata.json`, about `4.9K`;
+  - `view.html`, about `14K`.
+- Metadata check:
+  - lattice size: `[24, 24, 24, 32]`;
+  - render style: `topological_charge_volume`;
+  - mesh source: `topological_charge_volume_geometry`;
+  - frame count: `64`;
+  - framerate: `8`;
+  - duration: `8.0` seconds;
+  - frame mode: `slice4_sequence`;
+  - cached slice count: `32`;
+  - interpretation still records `not_real_time_minkowski_evolution=true`.
+- Quick visual sanity:
+  - QuickLook thumbnail generation succeeded;
+  - thumbnail shows non-empty signed yellow/blue volume meshes;
+  - detailed visual quality is not judged yet and needs user review in the
+    generated HTML page.
+- Validation:
+  - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl` on
+    `main` before the movie run.
+- User action needed:
+  - open the output review page, inspect the movie, and paste the generated
+    checkbox/comment review text back into the thread.
 
 ## Active note: 2026-05-10 topological-density config movie review helper
 
