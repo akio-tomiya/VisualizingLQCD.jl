@@ -4,7 +4,90 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the topological-volume `abs(q)` color PR.
+Last updated on 2026-05-10 during the topological-volume `abs(q)` visual review.
+
+## Active note: 2026-05-10 topological-volume `abs(q)` visual review
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-abscolor-review-result`.
+- Starting point: PR #33 was merged into `main`.
+- Goal:
+  - verify the newly merged topological-volume `abs(q)` color path on the real
+    `24^3 x 32` ILDG configuration;
+  - produce a user-reviewable page before deciding whether more color/threshold
+    tuning is needed.
+- Input:
+
+```text
+/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+```
+
+- Render command:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --camera-motion orbit --frame-mode sequence --nloops 2 --framerate 8 --figure-size 480 --show-render-progress true --output-dir /private/tmp/VisualizingLQCD-topological-abscolor-review-24x32
+```
+
+- Output review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-abscolor-review-24x32/view.html
+```
+
+- Output files:
+  - `topological_density_config_movie.mp4`, about `4.3M`;
+  - `topological_density_config_movie.mp4.metadata.json`, about `5.5K`;
+  - `view.html`, about `15K`;
+  - Quick Look thumbnail:
+    `/private/tmp/VisualizingLQCD-topological-abscolor-review-24x32/topological_density_config_movie.mp4.png`.
+- Metadata check:
+  - lattice size: `[24, 24, 24, 32]`;
+  - frame count: `64`;
+  - duration: `8.0` seconds;
+  - frame mode: `slice4_sequence`;
+  - level quantiles: `[0.94, 0.999]`;
+  - color method: `local_absolute_topological_charge_density_quantile`;
+  - positive palette: `topological_charge_positive`;
+  - negative palette: `topological_charge_negative`;
+  - positive and negative color ranges both start at
+    `2.0275648206484858e-4` and end at `6.161936800660506e-4`.
+- Validation:
+  - `git diff --check` passed on merged `main`;
+  - `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl` passed on
+    merged `main`;
+  - GLMakie movie render completed successfully on the MacBook Air;
+  - render progress completed `64` frames in about `1:17`;
+  - Quick Look thumbnail generation succeeded.
+- Browser note:
+  - direct in-app browser navigation to the `file:///private/tmp/...` review
+    page was blocked by the browser security policy, so this path should be
+    opened manually by the user.
+- User visual review pasted on 2026-05-10:
+
+```text
+# VisualizingLQCD topological-density config movie visual check
+
+source: file:///private/tmp/VisualizingLQCD-topological-abscolor-review-24x32/view.html
+session: 1778414750978
+updated: 2026-05-10T12:11:56.242Z
+
+- volume movie: visible, good, notable / promising
+```
+
+- Current interpretation:
+  - the `q0.940` body threshold plus local `abs(q)` color mapping is accepted
+    as the current topological-density volume baseline;
+  - do not retune the color range or threshold immediately unless a later
+    larger-volume sample exposes a specific problem;
+  - next topological-density work should focus on documentation/API examples
+    and possibly a larger or longer sample artifact, rather than more local
+    color-search churn.
 
 ## Active note: 2026-05-10 topological-volume absolute-density color
 
