@@ -64,6 +64,16 @@ result: pass
     quantiles can legitimately produce empty volume meshes after smoothing;
   - the low-quantile smoke is only to exercise the mesh path on tiny data, not
     a suggested physical display default.
+- User visual review on 2026-05-10:
+  - `/private/tmp/VisualizingLQCD-topological-config-review-smoke/view.html`
+    looked empty;
+  - the low-quantile smoke page showed visible objects, but the contour cases
+    were shell-like and not useful, and the volume case looked low-poly;
+  - conclusion: these tiny `3^3 x 2` pages are code-path smoke tests only and
+    should not be used for visual-quality judgment;
+  - future review requests to the user should be explicit about what action is
+    needed, and should target meaningful `24^3 x 32` or larger configuration
+    outputs rather than tiny smoke pages.
 - Next validation before/after PR:
   - run unit tests and `Pkg.test()`;
   - run the new script on the `24^3 x 32` Dropbox configuration. If it is slow
