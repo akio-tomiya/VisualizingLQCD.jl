@@ -224,10 +224,13 @@ end
     @test balanced_topological_style.color_quantile ==
           VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_COLOR_QUANTILE
     @test balanced_topological_style.alpha == VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_ALPHA
+    @test balanced_topological_style.transparency ==
+          VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_TRANSPARENCY
     wide_topological_style = VisualizingLQCD.topological_charge_style_preset_settings(
         VisualizingLQCD.TOPOLOGICAL_CHARGE_STYLE_WIDE)
     @test length(wide_topological_style.level_quantiles) == 3
-    @test wide_topological_style.alpha > balanced_topological_style.alpha
+    @test wide_topological_style.alpha == VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_WIDE_ALPHA
+    @test wide_topological_style.transparency == balanced_topological_style.transparency
     core_topological_style = VisualizingLQCD.topological_charge_style_preset_settings(
         VisualizingLQCD.TOPOLOGICAL_CHARGE_STYLE_CORE)
     @test minimum(core_topological_style.level_quantiles) >
@@ -264,6 +267,7 @@ end
     @test topological_setup.render_style_info["render_style"] == "topological_charge_signed"
     @test topological_setup.render_style_info["style_preset"] == "balanced"
     @test topological_setup.render_style_info["color_range"] == [-4.0, 4.0]
+    @test topological_setup.render_style_info["transparency"] == false
     signed_specs = VisualizingLQCD.contour_plot_specs(
         topological_setup.contour_style, topological_setup.levels)
     @test length(signed_specs) == 2
