@@ -21,6 +21,25 @@ Read these design notes first:
 - Keep I/O, observables, transforms, level selection, rendering, metadata, and configuration generation separated.
 - Do not rewrite the whole package in one pass.
 
+## Generated artifacts and visual review outputs
+
+- Do not keep expensive or user-review-critical render artifacts only under
+  `/private/tmp`. This includes sample movies, GIFs, review HTML pages,
+  thumbnails, and metadata sidecars that would be costly or confusing to
+  regenerate.
+- Use `/private/tmp` only for disposable scratch outputs. If an artifact is
+  shown to the user, needed for a PR decision, or expensive to recompute, also
+  place it in a persistent location such as a remote machine work directory,
+  Dropbox-backed storage, or another explicitly chosen durable directory.
+- Keep review HTML pages next to the media they review, so copied paths remain
+  valid after restarts and context compaction.
+- Record enough reproduction information in `docs/codex/visualization_refactor_status.md`
+  or another task-specific memo: machine name, branch/commit, exact command,
+  input configuration path, output directory, generated filenames, and visual
+  review result.
+- For remote runs, also record the login/manual location and any queue/job IDs
+  needed to recover logs or outputs later.
+
 ## First implementation target
 
 Start with a behavior-preserving refactor:
