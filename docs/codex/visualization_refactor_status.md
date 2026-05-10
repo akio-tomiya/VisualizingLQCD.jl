@@ -4,7 +4,43 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the visual-review UI comment-tag pass.
+Last updated on 2026-05-10 during the topological-density config movie helper pass.
+
+## Active note: 2026-05-10 topological-density config movie review helper
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-config-movie-review`.
+- Starting point: PR #26 was merged into `main`.
+- Goal: move from topological-density still review to a small, reviewable
+  configuration movie workflow without changing the core renderer.
+- Implemented:
+  - add `scripts/topology_fixtures/render_topological_density_config_movie.jl`;
+  - the script wraps `VisualizingLQCD.create_animation` with
+    `level_target=:topological_charge_density`;
+  - it supports contour, volume, or both movie modes and writes a local review
+    HTML page with the same checkbox/comment UI used by still reviews;
+  - correct the topological volume metadata `mesh_source` from the reused
+    action-density name to `topological_charge_volume_geometry`;
+  - document the command in `scripts/topology_fixtures/README.md`.
+- Validation:
+  - rendered a tiny `3^3 x 2` volume smoke movie from
+    `/private/tmp/VisualizingLQCD-topoconfig-hot-3322.ildg`;
+  - confirmed the generated review HTML contains the movie metadata, frame map,
+    and visual-review comment tags;
+  - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl`;
+  - passed `/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'`;
+  - passed `git diff --check`.
+- Smoke output review page:
+
+```text
+file:///private/tmp/VisualizingLQCD-topological-config-movie-smoke/view.html
+```
 
 ## Active note: 2026-05-10 visual-review comment tags
 
