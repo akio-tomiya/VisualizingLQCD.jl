@@ -135,6 +135,58 @@ function topological_charge_signed_contour_style(density;
     )
 end
 
+function topological_charge_volume_color(color_tuple; alpha=nothing)
+    r, g, b, a = color_tuple
+    return RGBAf(r, g, b, something(alpha, a))
+end
+
+function topological_charge_volume_style_metadata(;
+    style_preset,
+    positive_body_level,
+    negative_body_level,
+    level_quantiles,
+    color_quantile,
+    alpha,
+    transparency,
+)
+    return Dict(
+        "render_style" => String(RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME),
+        "style_preset" => String(style_preset),
+        "geometry" => "signed_positive_negative_filled_superlevel_solid_mesh",
+        "positive_body_level" => positive_body_level,
+        "negative_body_level" => negative_body_level,
+        "level_quantiles" => collect(level_quantiles),
+        "color_method" => "constant_sign_color",
+        "color_quantile" => color_quantile,
+        "positive_color" => collect(CURRENT_TOPOLOGICAL_CHARGE_VOLUME_POSITIVE_COLOR),
+        "negative_color" => collect(CURRENT_TOPOLOGICAL_CHARGE_VOLUME_NEGATIVE_COLOR),
+        "alpha" => alpha,
+        "transparency" => transparency,
+        "mesh_source" => "action_density_blob_geometry",
+        "pre_smooth" => Dict(
+            "boundary" => "periodic",
+            "weight" => CURRENT_ACTION_DENSITY_SMOOTH_WEIGHT,
+            "passes" => CURRENT_ACTION_DENSITY_SMOOTH_PASSES,
+        ),
+        "interpolation" => Dict(
+            "method" => "clamped_trilinear",
+            "factor" => CURRENT_ACTION_DENSITY_UPSAMPLE_FACTOR,
+        ),
+        "post_smooth" => Dict(
+            "boundary" => "clamped",
+            "weight" => CURRENT_ACTION_DENSITY_POST_SMOOTH_WEIGHT,
+            "passes" => CURRENT_ACTION_DENSITY_POST_SMOOTH_PASSES,
+        ),
+        "mesh_smoothing" => Dict(
+            "method" => "taubin",
+            "iterations" => CURRENT_ACTION_DENSITY_TAUBIN_ITERATIONS,
+            "lambda" => CURRENT_ACTION_DENSITY_TAUBIN_LAMBDA,
+            "mu" => CURRENT_ACTION_DENSITY_TAUBIN_MU,
+            "pin_domain" => CURRENT_ACTION_DENSITY_TAUBIN_PIN_DOMAIN,
+        ),
+    )
+end
+
 function validate_topological_charge_style_preset(style_preset::Symbol)
     if style_preset in (
         TOPOLOGICAL_CHARGE_STYLE_BALANCED,
@@ -244,6 +296,18 @@ function contour_plot_specs(style, levels)
     return [(style=style, levels=levels)]
 end
 
+function smallest_positive_level(levels)
+    positive_levels = [level for level in levels if level > 0]
+    isempty(positive_levels) && return nothing
+    return minimum(positive_levels)
+end
+
+function smallest_negative_magnitude_level(levels)
+    negative_levels = [-level for level in levels if level < 0]
+    isempty(negative_levels) && return nothing
+    return minimum(negative_levels)
+end
+
 function default_raw_high_level_quantiles(render_style::Symbol)
     if render_style == RENDER_STYLE_CURRENT
         return CURRENT_RAW_HIGH_QUANTILES
@@ -298,7 +362,8 @@ function effective_render_theme(render_style::Symbol, render_theme)
         return render_theme
     elseif render_style == RENDER_STYLE_PLAQUETTE_THERMAL ||
            render_style == RENDER_STYLE_ACTION_DENSITY_BLOB ||
-           render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED
+           render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED ||
+           render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME
         return RENDER_THEME_DARK
     else
         return CURRENT_RENDER_THEME
@@ -904,4 +969,56 @@ end
 function action_density_blob_plot!(ax, data, setup; a, lattice_size)
     geometry = action_density_blob_geometry(data, setup; a=a, lattice_size=lattice_size)
     return action_density_blob_plot!(ax, geometry)
+end
+
+function constant_color_geometry(geometry, color)
+    return (mesh=geometry.mesh, colors=fill(color, length(geometry.colors)),
+        info=geometry.info)
+end
+
+function topological_charge_volume_component_geometry(data, body_level, color;
+    a, lattice_size)
+
+    body_level === nothing && return nothing
+    render_field = smooth_periodic_3d(data)
+    maximum(render_field) >= body_level || return nothing
+    count(>=(body_level), render_field) > 0 || return nothing
+    setup = (body_level=body_level, color_range=(body_level, maximum(render_field)))
+    geometry = action_density_blob_geometry(render_field, setup; a=a, lattice_size=lattice_size)
+    return constant_color_geometry(geometry, color)
+end
+
+function topological_charge_volume_geometry(data, setup; a, lattice_size)
+    positive_data = max.(data, 0.0)
+    negative_data = max.(-data, 0.0)
+    positive_geometry = topological_charge_volume_component_geometry(
+        positive_data, setup.positive_body_level, setup.positive_color;
+        a=a, lattice_size=lattice_size)
+    negative_geometry = topological_charge_volume_component_geometry(
+        negative_data, setup.negative_body_level, setup.negative_color;
+        a=a, lattice_size=lattice_size)
+    return (
+        positive=positive_geometry,
+        negative=negative_geometry,
+        transparency=setup.transparency,
+        info=Dict{String,Any}(
+            "positive_body_level" => setup.positive_body_level,
+            "negative_body_level" => setup.negative_body_level,
+            "positive_info" => positive_geometry === nothing ? nothing : positive_geometry.info,
+            "negative_info" => negative_geometry === nothing ? nothing : negative_geometry.info,
+        ),
+    )
+end
+
+function topological_charge_volume_plot!(ax, geometry)
+    objects = Any[]
+    if geometry.positive !== nothing
+        push!(objects, mesh!(ax, geometry.positive.mesh; color=geometry.positive.colors,
+            shading=FastShading, transparency=geometry.transparency))
+    end
+    if geometry.negative !== nothing
+        push!(objects, mesh!(ax, geometry.negative.mesh; color=geometry.negative.colors,
+            shading=FastShading, transparency=geometry.transparency))
+    end
+    return objects, geometry.info
 end

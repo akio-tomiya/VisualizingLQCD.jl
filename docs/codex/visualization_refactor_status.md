@@ -4,7 +4,65 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-10 during the SU(2) instanton scalar-fixture pass.
+Last updated on 2026-05-10 during the topological-density volume-renderer pass.
+
+## Active note: 2026-05-10 topological-density volume renderer
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-volume-renderer`.
+- Starting point: PR #21 was merged into `main`.
+- Goal for this small PR: promote the signed topological-density volume
+  prototype from the fixture smoke script into the main rendering helpers while
+  keeping the existing contour renderer available.
+- Implemented:
+  - new opt-in render style `RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME`;
+  - `topological_charge_display_level_setup(...;
+    render_style=RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME)` returns a mesh
+    render setup;
+  - positive and negative density bodies are split as `max(q, 0)` and
+    `max(-q, 0)`, then rendered as separate solid meshes;
+  - the mesh path reuses the action-density blob geometry pipeline
+    (periodic smoothing, upsampling, post smoothing, Taubin mesh smoothing);
+  - metadata records positive/negative body levels, sign colors, geometry
+    method, smoothing parameters, and mesh source;
+  - the topology fixture script now calls the package helper instead of keeping
+    its own duplicate volume prototype.
+- Deliberate choice:
+  - default topological-density rendering remains
+    `RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED` for now;
+  - volume rendering is opt-in until it is checked on real gauge-field
+    topological density, not only scalar SU(2) fixtures.
+- Validation so far:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-volume-main-pr2 --case-set basic --style-preset wide --render-mode both --no-movie
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --output-dir /private/tmp/VisualizingLQCD-topology-volume-main-debug --case-set debug --style-preset all --render-mode volume --no-movie
+result: pass, 27 PNG cards plus view.html
+
+local create_animation smoke with a tiny hot 3x3x3x2 gauge field and
+render_style=RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME
+result: pass, MP4 and metadata written under /private/tmp
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass
+
+git diff --check
+result: pass
+```
+
+- Next before merge: visually review a real or semi-real gauge-field
+  topological-density movie/still using the opt-in volume renderer.
 
 ## Active note: 2026-05-10 topological-density style preset visibility
 
