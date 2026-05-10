@@ -4,8 +4,53 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after the remote half-speed topological-density
-README sample restore and visual review.
+Last updated on 2026-05-11 after adding the topological-density oracle-check
+branch.
+
+## Active note: 2026-05-11 topological-density oracle check
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-density-oracle-check`.
+- Starting point: PR #39 was merged into `main`.
+- Context:
+  - `/Users/akio/Downloads/topological_charge_density_bug_report_20260510.md`
+    reports an aliasing bug in recently added Gaugefields.jl public
+    topological-charge helpers;
+  - VisualizingLQCD's current clover density path already uses
+    `temps[2:end]` for loop-evaluation work buffers, but it only had cold-field
+    and scalar-fixture tests.
+- Goal for this small PR:
+  - add a nontrivial SU(2) `Gaugefields.Oneinstanton` regression check;
+  - compare `sum(topological_charge_density(U))` against a test-only scalar
+    clover-Q oracle that keeps the loop output buffer separate from all work
+    temporaries;
+  - keep this as a guard before replacing README media with the accepted
+    half-speed topological-density sample.
+- Probe result before editing tests:
+
+```text
+L=8, Q_oracle=0.7077703865460878,
+Q_density_sum=0.707770386546091, diff=3.219646771412954e-15
+```
+
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 214 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass, 214 tests, render smoke skipped
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-11 remote half-speed README sample review
 
