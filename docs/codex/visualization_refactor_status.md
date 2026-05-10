@@ -224,6 +224,34 @@ updated: 2026-05-10T07:33:21.305Z
 file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view-v3.html
 ```
 
+- User threshold review v3 pasted on 2026-05-10:
+
+```text
+# VisualizingLQCD topological-density threshold movie visual check v3
+
+source: file:///private/tmp/VisualizingLQCD-topological-threshold-review-24x32/view-v3.html
+session: 1778398853
+updated: 2026-05-10T07:53:41.311Z
+
+- q0.940 body: best default
+```
+
+- Current threshold decision:
+  - `q0.940` is the best topological-density volume body-threshold candidate
+    from the user visual review;
+  - implement it in a follow-up code PR as the topological-volume default, not
+    as part of this review-record PR.
+- Follow-up color direction:
+  - current topological-volume rendering uses constant sign colors: positive
+    yellow and negative cyan;
+  - next code PR should keep separate positive/negative meshes, but color each
+    mesh by local `abs(q)` magnitude;
+  - target visual language follows the VisualQCD/Nobel topological-density
+    style: positive lumps progress yellow/orange to red at high `|q|`, while
+    negative lumps progress cyan to blue at high `|q|`;
+  - metadata should record that color now means local absolute topological
+    charge density, while sign is still encoded by the positive/negative
+    palette.
 - Validation:
   - passed `/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl` on
     `main` before the movie run.
