@@ -17,8 +17,6 @@ const REVIEW_STYLE_PRESETS = (
 const RENDER_MODE_CONTOUR = :contour
 const RENDER_MODE_VOLUME = :volume
 const RENDER_MODE_BOTH = :both
-const TOPOLOGY_VOLUME_POSITIVE_COLOR = RGBAf(1.0, 0.82, 0.0, 1.0)
-const TOPOLOGY_VOLUME_NEGATIVE_COLOR = RGBAf(0.0, 0.78, 1.0, 1.0)
 
 function parse_style_preset(raw)
     preset = Symbol(raw)
@@ -340,39 +338,6 @@ function render_contour_case(case, output_dir, options)
     )
 end
 
-function smallest_positive_level(levels)
-    positive_levels = [level for level in levels if level > 0]
-    isempty(positive_levels) && return nothing
-    return minimum(positive_levels)
-end
-
-function smallest_negative_magnitude_level(levels)
-    negative_levels = [-level for level in levels if level < 0]
-    isempty(negative_levels) && return nothing
-    return minimum(negative_levels)
-end
-
-function constant_color_geometry(geometry, color)
-    return (mesh=geometry.mesh, colors=fill(color, length(geometry.colors)),
-        info=geometry.info)
-end
-
-function topology_volume_geometry(data, body_level; a, lattice_size)
-    body_level === nothing && return nothing
-    render_field = VisualizingLQCD.smooth_periodic_3d(data)
-    maximum(render_field) > body_level || return nothing
-    count(>=(body_level), render_field) > 0 || return nothing
-    setup = (body_level=body_level, color_range=(body_level, maximum(render_field)))
-    return VisualizingLQCD.action_density_blob_geometry(render_field, setup;
-        a=a, lattice_size=lattice_size)
-end
-
-function plot_constant_geometry!(ax, geometry, color)
-    recolored = constant_color_geometry(geometry, color)
-    return mesh!(ax, recolored.mesh; color=recolored.colors,
-        shading=FastShading, transparency=false), recolored.info
-end
-
 function render_volume_case(case, output_dir, options)
     density = case.density
     nx, ny, nz, _ = size(density)
@@ -380,11 +345,10 @@ function render_volume_case(case, output_dir, options)
         style_preset=options.style_preset,
         level_quantiles=options.level_quantiles,
         color_quantile=options.color_quantile,
+        render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME,
         render_alpha=options.render_alpha)
     diagnostics = VisualizingLQCD.topological_density_fixture_diagnostics(density)
 
-    positive_level = smallest_positive_level(setup.levels)
-    negative_level = smallest_negative_magnitude_level(setup.levels)
     @printf("rendering %-34s slice4=%d mode=volume levels=%d\n",
         case.name, case.slice4, length(setup.levels))
 
@@ -392,30 +356,9 @@ function render_volume_case(case, output_dir, options)
     ax = Axis3(fig[1, 1]; axis_kwargs("volume / $(case.name)")...)
     limits!(ax, 1, nx, 1, ny, 1, nz)
     density_slice = @view density[:, :, :, case.slice4]
-    volume_info = Dict{String,Any}(
-        "positive_body_level" => positive_level,
-        "negative_body_level" => negative_level,
-        "positive_info" => nothing,
-        "negative_info" => nothing,
-    )
-
-    positive_data = max.(density_slice, 0.0)
-    positive_geometry = topology_volume_geometry(positive_data, positive_level;
+    geometry = VisualizingLQCD.topological_charge_volume_geometry(density_slice, setup;
         a=1.0, lattice_size=(nx, ny, nz))
-    if positive_geometry !== nothing
-        _, info = plot_constant_geometry!(
-            ax, positive_geometry, TOPOLOGY_VOLUME_POSITIVE_COLOR)
-        volume_info["positive_info"] = info
-    end
-
-    negative_data = max.(-density_slice, 0.0)
-    negative_geometry = topology_volume_geometry(negative_data, negative_level;
-        a=1.0, lattice_size=(nx, ny, nz))
-    if negative_geometry !== nothing
-        _, info = plot_constant_geometry!(
-            ax, negative_geometry, TOPOLOGY_VOLUME_NEGATIVE_COLOR)
-        volume_info["negative_info"] = info
-    end
+    _, volume_info = VisualizingLQCD.topological_charge_volume_plot!(ax, geometry)
 
     png_path = joinpath(output_dir, "$(case.name).png")
     save(png_path, fig)
@@ -439,7 +382,7 @@ function render_volume_case(case, output_dir, options)
         png=png_path,
         mp4=mp4_path,
         levels=setup.levels,
-        color_range=setup.render_style_info["color_range"],
+        color_range=get(setup.render_style_info, "color_range", nothing),
         diagnostics=diagnostics,
         fixture_metadata=case.fixture_metadata,
         volume_info=volume_info,
