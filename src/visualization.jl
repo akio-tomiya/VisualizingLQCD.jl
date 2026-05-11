@@ -179,6 +179,33 @@ function topological_charge_display_level_setup(density_t;
     )
 end
 
+function mesh_renderer_kind(setup)
+    if hasproperty(setup, :mesh_renderer)
+        return setup.mesh_renderer
+    end
+    return :action_density_blob
+end
+
+function mesh_geometry_for_slice(data, setup; a, lattice_size)
+    renderer = mesh_renderer_kind(setup)
+    if renderer == :topological_charge_volume
+        return topological_charge_volume_geometry(data, setup; a=a, lattice_size=lattice_size)
+    elseif renderer == :action_density_blob
+        return action_density_blob_geometry(data, setup; a=a, lattice_size=lattice_size)
+    end
+    throw(ArgumentError("unsupported mesh renderer: $renderer"))
+end
+
+function mesh_plot_geometry!(ax, geometry, setup)
+    renderer = mesh_renderer_kind(setup)
+    if renderer == :topological_charge_volume
+        return topological_charge_volume_plot!(ax, geometry)
+    elseif renderer == :action_density_blob
+        return action_density_blob_plot!(ax, geometry)
+    end
+    throw(ArgumentError("unsupported mesh renderer: $renderer"))
+end
+
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
@@ -402,28 +429,16 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         ax.title = movie_title
 
         if display_setup.render_kind == :mesh
-            if hasproperty(display_setup, :mesh_renderer) &&
-               display_setup.mesh_renderer == :topological_charge_volume
-                if cache_active
-                    geometry = get!(mesh_cache, slice4) do
-                        topological_charge_volume_geometry(plaqs, display_setup;
-                            a=a, lattice_size=(NX, NY, NZ))
-                    end
-                    plot_obj[], _ = topological_charge_volume_plot!(ax, geometry)
-                else
-                    geometry = topological_charge_volume_geometry(plaqs, display_setup;
-                        a=a, lattice_size=(NX, NY, NZ))
-                    plot_obj[], _ = topological_charge_volume_plot!(ax, geometry)
-                end
-            elseif cache_active
+            if cache_active
                 geometry = get!(mesh_cache, slice4) do
-                    action_density_blob_geometry(plaqs, display_setup;
+                    mesh_geometry_for_slice(plaqs, display_setup;
                         a=a, lattice_size=(NX, NY, NZ))
                 end
-                plot_obj[], _ = action_density_blob_plot!(ax, geometry)
+                plot_obj[], _ = mesh_plot_geometry!(ax, geometry, display_setup)
             else
-                plot_obj[], _ = action_density_blob_plot!(ax, plaqs, display_setup;
+                geometry = mesh_geometry_for_slice(plaqs, display_setup;
                     a=a, lattice_size=(NX, NY, NZ))
+                plot_obj[], _ = mesh_plot_geometry!(ax, geometry, display_setup)
             end
         else
             plot_obj[] = contour_plot_group!(plaqs, levels)
