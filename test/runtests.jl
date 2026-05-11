@@ -601,6 +601,8 @@ end
     readme_text = read(joinpath(root, "README.md"), String)
     topology_readme_text = read(joinpath(root, "scripts", "topology_fixtures", "README.md"),
         String)
+    sample_metadata_text = read(joinpath(root, "$(SAMPLE_BASENAME).mp4.metadata.json"),
+        String)
     @test occursin("$(SAMPLE_BASENAME).gif", readme_text)
     @test occursin("width=\"300\"", readme_text)
     @test occursin("`128` frames", readme_text)
@@ -617,6 +619,17 @@ end
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).mp4.metadata.json"))
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).gif"))
     @test isfile(joinpath(root, "test", "$(SAMPLE_BASENAME).gif"))
+
+    @test occursin("\"lattice_size\": [24, 24, 24, 32]", sample_metadata_text)
+    @test occursin("\"level_target\": \"topological_charge_density\"",
+        sample_metadata_text)
+    @test occursin("\"render_style\": \"topological_charge_volume\"",
+        sample_metadata_text)
+    @test occursin("\"frame_count\": 128", sample_metadata_text)
+    @test occursin("\"duration_seconds\": 16.0", sample_metadata_text)
+    @test occursin("\"show_axis_labels\": false", sample_metadata_text)
+    @test occursin("\"not_real_time_minkowski_evolution\": true", sample_metadata_text)
+    @test occursin("{\"frame\": 128, \"slice4\": 32}", sample_metadata_text)
 end
 
 @testset "Optional render smoke" begin
