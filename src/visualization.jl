@@ -486,6 +486,11 @@ function animation_metadata_for_render(; videoname, metadata_filename, filename,
     )
 end
 
+function finalize_animation_output(videoname, metadata_filename, metadata)
+    write_animation_metadata(metadata_filename, metadata)
+    return (video=videoname, metadata=metadata_filename)
+end
+
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
@@ -635,8 +640,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         render_plan=render_plan,
         camera=camera,
         mesh_cache=mesh_cache)
-    write_animation_metadata(metadata_filename, metadata)
-    return (video=videoname, metadata=metadata_filename)
+    return finalize_animation_output(videoname, metadata_filename, metadata)
 end
 
 export create_animation

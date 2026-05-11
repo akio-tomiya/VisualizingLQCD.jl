@@ -279,6 +279,17 @@ end
     @test assembled_metadata["render"]["show_render_progress"] == false
     @test assembled_metadata["render"]["show_axis_labels"] == false
     @test assembled_metadata["observable"]["kind"] == "topological_charge_density"
+    mktempdir() do dir
+        metadata_path = joinpath(dir, "$(SAMPLE_BASENAME).mp4.metadata.json")
+        result = VisualizingLQCD.finalize_animation_output(
+            "$(SAMPLE_BASENAME).mp4", metadata_path, assembled_metadata)
+        @test result == (video="$(SAMPLE_BASENAME).mp4", metadata=metadata_path)
+        @test isfile(metadata_path)
+        metadata_text = read(metadata_path, String)
+        @test occursin("\"schema_version\": 1", metadata_text)
+        @test occursin("\"kind\": \"topological_charge_density\"", metadata_text)
+        @test endswith(metadata_text, "\n")
+    end
 end
 
 @testset "Display and render setup contracts" begin
