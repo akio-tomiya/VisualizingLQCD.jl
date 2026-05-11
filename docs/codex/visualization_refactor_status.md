@@ -4,7 +4,64 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after validating metadata assembly extraction.
+Last updated on 2026-05-11 after validating animation output finalization.
+
+## Active note: 2026-05-11 animation output finalization
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/extract-animation-output-finalization`.
+- Starting point: PR #49 was merged into `main`.
+- Goal:
+  - continue reducing `create_animation` while preserving output behavior;
+  - move metadata writing and the `(video, metadata)` return-value contract into
+    a small helper;
+  - keep rendering, metadata contents, and output paths unchanged.
+- Scope:
+  - `finalize_animation_output` writes the metadata sidecar and returns the
+    existing named tuple contract;
+  - `create_animation` still owns the render orchestration and asks the helper to
+    finalize the already-built metadata.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `92%`;
+  - README/sample media path: about `90%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - `create_animation` still owns figure setup and the local `draw_slice!`
+    closure;
+  - `Pkg.test()` remains blocked by the existing `Qt6Base_jll` manifest vs
+    registry mismatch until the package environment is deliberately refreshed;
+  - GLMakie/direct smoke remains the practical guard for render-path movement.
+- Next likely PRs, in order:
+  1. Consider extracting a figure/draw-context helper, but only if the diff stays
+     reviewable.
+  2. Clean up user-facing example command structure.
+  3. Consider a deliberate package-environment refresh for `Pkg.test`.
+  4. True instanton/SU(3)-embedded validation once Gaugefields.jl-side work is
+     ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 288 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; ...'
+result: pass, direct create_animation smoke wrote:
+        /private/tmp/VisualizingLQCD-output-finalization-smoke/smoke.mp4
+        /private/tmp/VisualizingLQCD-output-finalization-smoke/smoke.metadata.json
+        metadata confirmed filename=/private/tmp/VisualizingLQCD-output-finalization-smoke/smoke.ildg,
+        frame_mode=fixed_slice4, fixed_slice4=1,
+        observable.kind=local_action_density, render_style=action_density_blob,
+        frame_count=16, cached_slice_count=1
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-11 metadata assembly extraction
 
