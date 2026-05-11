@@ -25,6 +25,8 @@ on a full GLMakie `record` loop.
 topological-density path, but writes one or more movies plus a review HTML page.
 It is a thin wrapper around `VisualizingLQCD.create_animation`, intended for
 small reviewed movie runs after the still-review page looks reasonable.
+Use `--show-axis-labels false` for README-style orbit movies; it keeps the grid
+and 3D box but avoids axis-label shimmer during rotation.
 
 For volume rendering, the current reviewed baseline uses a `q0.940` lower
 `|q|` body threshold and colors each sign by local `abs(q)`: positive charge is
@@ -63,3 +65,15 @@ Run from the repository root:
 
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --camera-motion orbit --frame-mode sequence --nloops 2 --framerate 8 --figure-size 480 --show-render-progress true --output-dir /private/tmp/VisualizingLQCD-topological-config-movie-review
 ```
+
+The accepted README sample can be reproduced from the same input configuration
+with the following reviewed settings:
+
+```sh
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --output-name topological_density_noaxis_halfspeed.mp4 --render-mode volume --camera-motion orbit --frame-mode sequence --camera-orbit-turns 1 --nloops 4 --framerate 8 --figure-size 480 --show-axis-labels false --show-render-progress true --output-dir /private/tmp/VisualizingLQCD-topological-readme-sample
+```
+
+This produces `128` frames at `8` fps: all `32` Euclidean fourth-direction
+slices are shown four times while the camera completes one full turn. Keep the
+source MP4 and metadata sidecar in durable storage before making a user-review
+page or committing derived README media.
