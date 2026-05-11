@@ -234,6 +234,51 @@ end
     @test length(metadata["frame_map"]) == metadata["render"]["frame_count"]
     @test metadata["frame_map"][1] == Dict("frame" => 1, "slice4" => 1)
     @test metadata["frame_map"][end] == Dict("frame" => 128, "slice4" => 32)
+    sample_display_setup = (
+        levels=[
+            -0.0006161936800660506,
+            -0.00020275648206484858,
+            0.00020275648206484858,
+            0.0006161936800660506,
+        ],
+        level_summary=sample_summary,
+        title="Topological charge density",
+        display_transform_info=VisualizingLQCD.topological_charge_display_transform_metadata(),
+        level_selection_info=Dict("level_target" => "topological_charge_density"),
+        render_style_info=Dict("render_style" => "topological_charge_volume"),
+        observable_info=VisualizingLQCD.topological_charge_density_observable_metadata(),
+    )
+    sample_render_plan = (
+        framerate=8,
+        nloops=4,
+        figure_size=(480, 480),
+        frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
+        fixed_slice4=nothing,
+        slice_hold_frames=1,
+        show_render_progress=false,
+        show_axis_labels=false,
+        cache_active=true,
+    )
+    assembled_metadata = VisualizingLQCD.animation_metadata_for_render(
+        videoname="$(SAMPLE_BASENAME).mp4",
+        metadata_filename="$(SAMPLE_BASENAME).mp4.metadata.json",
+        filename="Conf24242432beta6.0.ildg",
+        lattice_size=sample_lattice,
+        nc=3,
+        beta=6.0,
+        flow_steps=200,
+        display_setup=sample_display_setup,
+        render_theme=VisualizingLQCD.RENDER_THEME_DARK,
+        render_plan=sample_render_plan,
+        camera=sample_camera,
+        mesh_cache=Dict(1 => :slice1, 2 => :slice2))
+    @test assembled_metadata["render"]["frame_count"] == 128
+    @test assembled_metadata["render"]["cached_slice_count"] == 2
+    @test assembled_metadata["render"]["cache_render_slices"] == true
+    @test assembled_metadata["render"]["render_theme"] == "dark"
+    @test assembled_metadata["render"]["show_render_progress"] == false
+    @test assembled_metadata["render"]["show_axis_labels"] == false
+    @test assembled_metadata["observable"]["kind"] == "topological_charge_density"
 end
 
 @testset "Display and render setup contracts" begin
