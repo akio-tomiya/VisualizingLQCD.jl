@@ -4,7 +4,66 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after validating animation output finalization.
+Last updated on 2026-05-11 after validating animation scene setup extraction.
+
+## Active note: 2026-05-11 animation scene setup extraction
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/extract-animation-scene-setup`.
+- Starting point: PR #50 was merged into `main`.
+- Goal:
+  - continue reducing `create_animation` while preserving output behavior;
+  - move spatial coordinate calculation and Figure/Axis3 initialization into
+    helpers;
+  - keep rendering, metadata contents, and output paths unchanged.
+- Scope:
+  - `animation_spatial_coordinates` owns the physical coordinate ranges and axis
+    limits derived from lattice spacing and spatial lattice size;
+  - `initialize_animation_scene` owns Figure creation, axis keyword assembly,
+    Axis3 construction, and initial axis limits;
+  - `create_animation` still owns the local `draw_slice!` closure and render
+    orchestration.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `93%`;
+  - README/sample media path: about `90%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - `create_animation` still owns `draw_slice!`, cache lifetime, and the final
+    render orchestration;
+  - extracting `draw_slice!` will touch the hottest visual path, so it should be
+    a cautious PR with direct smoke before and after;
+  - `Pkg.test()` remains blocked by the existing `Qt6Base_jll` manifest vs
+    registry mismatch until the package environment is deliberately refreshed.
+- Next likely PRs, in order:
+  1. Either extract a tiny draw-context helper, or stop the refactor here and
+     clean up user-facing example command structure.
+  2. Consider a deliberate package-environment refresh for `Pkg.test`.
+  3. True instanton/SU(3)-embedded validation once Gaugefields.jl-side work is
+     ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 292 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; ...'
+result: pass, direct create_animation smoke wrote:
+        /private/tmp/VisualizingLQCD-scene-setup-smoke/smoke.mp4
+        /private/tmp/VisualizingLQCD-scene-setup-smoke/smoke.metadata.json
+        metadata confirmed filename=/private/tmp/VisualizingLQCD-scene-setup-smoke/smoke.ildg,
+        frame_mode=fixed_slice4, fixed_slice4=1,
+        observable.kind=local_action_density, render_style=action_density_blob,
+        frame_count=16, cached_slice_count=1, figure_size=[800, 800]
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-11 animation output finalization
 
