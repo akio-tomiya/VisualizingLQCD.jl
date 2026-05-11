@@ -1,5 +1,8 @@
 using VisualizingLQCD
+using Gaugefields
+using LinearAlgebra
 using Test
+using Wilsonloop
 
 const SAMPLE_BASENAME =
     "plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn"
@@ -20,6 +23,62 @@ end
 function run_render_smoke_enabled()
     flag = lowercase(get(ENV, "VISUALIZING_LQCD_RUN_RENDER_SMOKE", "0"))
     return flag in ("1", "true", "yes")
+end
+
+function reference_clover_loops(mu, nu)
+    return Wilsonloop.Wilsonline{4}[
+        Wilsonloop.Wilsonline([(mu, +1), (nu, +1), (mu, -1), (nu, -1)]),
+        Wilsonloop.Wilsonline([(nu, +1), (mu, -1), (nu, -1), (mu, +1)]),
+        Wilsonloop.Wilsonline([(nu, -1), (mu, +1), (nu, +1), (mu, -1)]),
+        Wilsonloop.Wilsonline([(mu, -1), (nu, -1), (mu, +1), (nu, +1)]),
+    ]
+end
+
+function reference_clover_loopset()
+    loops = Array{Vector{Wilsonloop.Wilsonline{4}},2}(undef, 4, 4)
+    for mu in 1:4, nu in 1:4
+        loops[mu, nu] = mu == nu ? Wilsonloop.Wilsonline{4}[] :
+                        reference_clover_loops(mu, nu)
+    end
+    return loops, 4
+end
+
+function reference_epsilon4(mu, nu, rho, sigma)
+    values = (mu, nu, rho, sigma)
+    length(unique(values)) == 4 || return 0
+
+    inversions = 0
+    for i in 1:3, j in (i + 1):4
+        inversions += values[i] > values[j]
+    end
+    return iseven(inversions) ? 1 : -1
+end
+
+function reference_clover_topological_charge(U)
+    loops, loop_count = reference_clover_loopset()
+    loop_out = similar(U[1])
+    temps = [similar(U[1]) for _ in 1:4]
+    field_strength = [similar(U[1]) for _ in 1:4, _ in 1:4]
+
+    for mu in 1:4, nu in 1:4
+        mu == nu && continue
+        Gaugefields.evaluate_gaugelinks!(loop_out, loops[mu, nu], U, temps)
+        Gaugefields.Traceless_antihermitian!(field_strength[mu, nu], loop_out)
+    end
+
+    charge = 0.0
+    for mu in 1:4, nu in 1:4
+        mu == nu && continue
+        field_mu_nu = field_strength[mu, nu]
+        for rho in 1:4, sigma in 1:4
+            rho == sigma && continue
+            epsilon = reference_epsilon4(mu, nu, rho, sigma)
+            epsilon == 0 && continue
+            field_rho_sigma = field_strength[rho, sigma]
+            charge += epsilon * tr(field_mu_nu, field_rho_sigma) / loop_count^2
+        end
+    end
+    return -real(charge) / (32 * pi^2)
 end
 
 @testset "Frame selection contracts" begin
@@ -421,6 +480,28 @@ end
     @test size(density) == (NX, NY, NZ, NT)
     @test maximum(abs.(density)) ≈ 0.0 atol = 1e-12
     @test VisualizingLQCD.topological_charge_from_density(density) ≈ 0.0 atol = 1e-12
+
+    instanton_lattice = 8
+    instanton_nc = 2
+    instanton_wing = 1
+    instanton_u = Gaugefields.Oneinstanton(
+        instanton_nc,
+        instanton_wing,
+        instanton_lattice,
+        instanton_lattice,
+        instanton_lattice,
+        instanton_lattice)
+    instanton_density = VisualizingLQCD.topological_charge_density(
+        instanton_u,
+        instanton_lattice,
+        instanton_lattice,
+        instanton_lattice,
+        instanton_lattice,
+        instanton_nc)
+    density_charge = VisualizingLQCD.topological_charge_from_density(instanton_density)
+    reference_charge = reference_clover_topological_charge(instanton_u)
+    @test density_charge ≈ reference_charge atol = 1e-10
+    @test abs(density_charge) > 0.5
 end
 
 @testset "SU(2) instanton density fixture contracts" begin
