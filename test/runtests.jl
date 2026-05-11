@@ -264,6 +264,25 @@ end
     @test VisualizingLQCD.default_render_style_for_level_target(
         VisualizingLQCD.LEVEL_TARGET_LEGACY_NEGLOG_HIGH) ==
           VisualizingLQCD.RENDER_STYLE_CURRENT
+    setup_u = VisualizingLQCD.Initialize_Gaugefields(
+        3, 0, 2, 2, 2, 2; condition=VisualizingLQCD.CURRENT_GENERATION_INITIAL_CONDITION)
+    action_display_result = VisualizingLQCD.animation_display_setup_for_gaugefield(
+        setup_u, 2, 2, 2, 2, 3;
+        level_target=VisualizingLQCD.LEVEL_TARGET_ACTION_DENSITY_HIGH)
+    @test action_display_result.render_style == VisualizingLQCD.RENDER_STYLE_ACTION_DENSITY_BLOB
+    @test action_display_result.display_setup.render_kind == :mesh
+    @test action_display_result.display_setup.observable_info["kind"] == "local_action_density"
+    legacy_display_result = VisualizingLQCD.animation_display_setup_for_gaugefield(
+        setup_u, 2, 2, 2, 2, 3;
+        level_target=VisualizingLQCD.LEVEL_TARGET_LEGACY_NEGLOG_HIGH,
+        render_style=VisualizingLQCD.RENDER_STYLE_CURRENT)
+    @test legacy_display_result.render_style == VisualizingLQCD.RENDER_STYLE_CURRENT
+    @test legacy_display_result.display_setup.render_kind == :contour
+    @test legacy_display_result.display_setup.display_transform_info["kind"] == "neglog"
+    @test_throws ArgumentError VisualizingLQCD.animation_display_setup_for_gaugefield(
+        setup_u, 2, 2, 2, 2, 3;
+        level_target=VisualizingLQCD.LEVEL_TARGET_ACTION_DENSITY_HIGH,
+        render_style=VisualizingLQCD.RENDER_STYLE_CURRENT)
 
     @test VisualizingLQCD.plaquette_loop(1, 3) == [(1, 1), (3, 1), (1, -1), (3, -1)]
     @test VisualizingLQCD.legacy_mean_std_levels(
@@ -611,6 +630,22 @@ end
     reference_charge = reference_clover_topological_charge(instanton_u)
     @test density_charge ≈ reference_charge atol = 1e-10
     @test abs(density_charge) > 0.5
+    topological_display_result = VisualizingLQCD.animation_display_setup_for_gaugefield(
+        instanton_u,
+        instanton_lattice,
+        instanton_lattice,
+        instanton_lattice,
+        instanton_lattice,
+        instanton_nc;
+        level_target=VisualizingLQCD.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY,
+        render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME)
+    @test topological_display_result.render_style ==
+          VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME
+    @test topological_display_result.display_setup.render_kind == :mesh
+    @test topological_display_result.display_setup.mesh_renderer ==
+          :topological_charge_volume
+    @test size(topological_display_result.display_setup.display_field) ==
+          size(instanton_density)
 end
 
 @testset "SU(2) instanton density fixture contracts" begin
