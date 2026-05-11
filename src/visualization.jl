@@ -449,6 +449,43 @@ function load_animation_gaugefield(filename, NX, NY, NZ, NT, NC;
     return U
 end
 
+function animation_metadata_for_render(; videoname, metadata_filename, filename,
+    lattice_size, nc, beta, flow_steps, display_setup, render_theme, render_plan,
+    camera, mesh_cache)
+
+    return animation_metadata(
+        videoname=videoname,
+        metadata_filename=metadata_filename,
+        filename=filename,
+        lattice_size=lattice_size,
+        nc=nc,
+        beta=beta,
+        flow_steps=flow_steps,
+        levels=display_setup.levels,
+        level_summary=display_setup.level_summary,
+        framerate=render_plan.framerate,
+        nloops=render_plan.nloops,
+        title=display_setup.title,
+        figure_size=render_plan.figure_size,
+        frame_mode=render_plan.frame_mode,
+        fixed_slice4=render_plan.fixed_slice4,
+        slice_hold_frames=render_plan.slice_hold_frames,
+        display_transform_info=display_setup.display_transform_info,
+        level_selection_info=display_setup.level_selection_info,
+        render_style_info=display_setup.render_style_info,
+        render_theme_info=render_theme_metadata(render_theme),
+        render_progress_info=render_progress_metadata(render_plan.show_render_progress),
+        render_axis_info=render_axis_metadata(render_plan.show_axis_labels),
+        camera_info=camera_motion_metadata(camera),
+        render_cache_info=Dict(
+            "cache_render_slices" => render_plan.cache_active,
+            "cached_slice_count" => length(mesh_cache),
+            "cache_key" => "slice4",
+        ),
+        observable_info=display_setup.observable_info,
+    )
+end
+
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
@@ -525,12 +562,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         figure_size=figure_size,
         show_render_progress=show_render_progress,
         show_axis_labels=show_axis_labels)
-    effective_framerate = render_plan.framerate
-    effective_frame_mode = render_plan.frame_mode
-    effective_slice_hold_frames = render_plan.slice_hold_frames
-    effective_nloops = render_plan.nloops
     effective_figure_size = render_plan.figure_size
-    effective_show_render_progress = render_plan.show_render_progress
     effective_show_axis_labels = render_plan.show_axis_labels
     cache_active = render_plan.cache_active
 
@@ -590,7 +622,7 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     record_animation_frames!(fig, ax, videoname, NT, camera, draw_slice!, current_slice4,
         render_plan)
 
-    metadata = animation_metadata(
+    metadata = animation_metadata_for_render(
         videoname=videoname,
         metadata_filename=metadata_filename,
         filename=filename,
@@ -598,29 +630,11 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         nc=NC,
         beta=beta,
         flow_steps=flow_steps_in,
-        levels=levels,
-        level_summary=level_summary,
-        framerate=effective_framerate,
-        nloops=effective_nloops,
-        title=movie_title,
-        figure_size=effective_figure_size,
-        frame_mode=effective_frame_mode,
-        fixed_slice4=fixed_slice4,
-        slice_hold_frames=effective_slice_hold_frames,
-        display_transform_info=display_setup.display_transform_info,
-        level_selection_info=display_setup.level_selection_info,
-        render_style_info=display_setup.render_style_info,
-        render_theme_info=render_theme_metadata(effective_theme),
-        render_progress_info=render_progress_metadata(effective_show_render_progress),
-        render_axis_info=render_axis_metadata(effective_show_axis_labels),
-        camera_info=camera_motion_metadata(camera),
-        render_cache_info=Dict(
-            "cache_render_slices" => cache_active,
-            "cached_slice_count" => length(mesh_cache),
-            "cache_key" => "slice4",
-        ),
-        observable_info=display_setup.observable_info,
-    )
+        display_setup=display_setup,
+        render_theme=effective_theme,
+        render_plan=render_plan,
+        camera=camera,
+        mesh_cache=mesh_cache)
     write_animation_metadata(metadata_filename, metadata)
     return (video=videoname, metadata=metadata_filename)
 end

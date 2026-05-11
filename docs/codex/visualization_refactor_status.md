@@ -4,7 +4,62 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after starting gauge-field I/O extraction.
+Last updated on 2026-05-11 after validating metadata assembly extraction.
+
+## Active note: 2026-05-11 metadata assembly extraction
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/extract-metadata-assembly`.
+- Starting point: PR #48 was merged into `main`.
+- Goal:
+  - continue reducing `create_animation` while preserving output behavior;
+  - move the metadata dict construction into a helper;
+  - keep gauge-field loading, display setup, figure setup, drawing, movie
+    recording, metadata writing, and file output unchanged for this PR.
+- Scope:
+  - `animation_metadata_for_render` collects metadata from `display_setup`,
+    `render_plan`, `camera`, `render_theme`, and `mesh_cache`;
+  - `create_animation` now records the movie, asks the helper for metadata, writes
+    the sidecar, and returns the same `(video, metadata)` contract;
+  - metadata schema and field values are intended to remain identical.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `91%`;
+  - README/sample media path: about `90%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - `create_animation` still owns figure setup and metadata writing;
+  - `Pkg.test()` remains blocked by the existing `Qt6Base_jll` manifest vs
+    registry mismatch until the package environment is deliberately refreshed;
+  - GLMakie/direct smoke remains the practical guard for render-path movement.
+- Next likely PRs, in order:
+  1. Move metadata writing/return-value finalization into a tiny output helper.
+  2. Clean up user-facing example command structure.
+  3. Consider a deliberate package-environment refresh for `Pkg.test`.
+  4. True instanton/SU(3)-embedded validation once Gaugefields.jl-side work is
+     ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 283 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; ...'
+result: pass, direct create_animation smoke wrote:
+        /private/tmp/VisualizingLQCD-metadata-assembly-smoke/smoke.mp4
+        /private/tmp/VisualizingLQCD-metadata-assembly-smoke/smoke.metadata.json
+        metadata confirmed filename=/private/tmp/VisualizingLQCD-metadata-assembly-smoke/smoke.ildg,
+        observable.kind=local_action_density, render_style=action_density_blob,
+        frame_count=16, cached_slice_count=16
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-11 gauge-field I/O extraction
 
