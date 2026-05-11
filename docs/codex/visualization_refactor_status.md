@@ -4,7 +4,75 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after starting mesh render helper extraction.
+Last updated on 2026-05-11 after starting create_animation helper splitting.
+
+## Active note: 2026-05-11 create_animation helper splitting
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/split-create-animation-helpers`.
+- Starting point: PR #44 was merged into `main`.
+- Goal:
+  - continue the renderer/orchestration separation with another small PR;
+  - split frame planning, axis tick/keyword construction, and the Makie record
+    loop out of `create_animation`;
+  - keep rendered output and metadata contracts unchanged.
+- Scope:
+  - `animation_render_plan` centralizes framerate, nloop, frame-mode, figure-size,
+    progress, axis-label, and mesh-cache validation;
+  - `animation_axis_tick_spec` and `animation_axis_kwargs` preserve the existing
+    tick-label thinning, axis-label hiding, theme colors, and camera keyword
+    behavior;
+  - `record_animation_frames!` keeps the current record loop semantics while
+    making the fourth-direction frame update logic easier to isolate later.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `87%`;
+  - README/sample media path: about `90%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - this PR makes `create_animation` smaller, but observable selection and I/O are
+    still inside it;
+  - GLMakie render behavior remains machine/display dependent, so visual-review
+    artifacts still need durable paths and machine names;
+  - true instanton/SU(3)-embedded validation remains outside this repo's current
+    merged state.
+- Next likely PRs, in order:
+  1. Extract contour draw dispatch and plot-object deletion into renderer helpers.
+  2. Separate observable/display setup from gauge-field I/O.
+  3. Separate metadata assembly from movie recording.
+  4. True instanton/SU(3)-embedded validation once Gaugefields.jl-side work is
+     ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 253 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: blocked before tests by Julia Pkg resolution:
+        Qt6Base_jll 6.10.2+1 is in Manifest.toml, but the current registry
+        exposes 6.10.2+2 and not 6.10.2+1. No package files were changed.
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test(; allow_reresolve=false)'
+result: same Pkg resolution block
+
+JULIA_PKG_OFFLINE=true /Users/akio/.juliaup/bin/julia --project=. \
+  -e 'using Pkg; Pkg.test(; allow_reresolve=false)'
+result: same Pkg resolution block
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; ...'
+result: pass, direct create_animation smoke wrote:
+        /private/tmp/VisualizingLQCD-split-create-smoke/smoke.mp4
+        /private/tmp/VisualizingLQCD-split-create-smoke/smoke.metadata.json
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-11 mesh render helper extraction
 
