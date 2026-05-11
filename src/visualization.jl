@@ -196,6 +196,19 @@ function mesh_geometry_for_slice(data, setup; a, lattice_size)
     throw(ArgumentError("unsupported mesh renderer: $renderer"))
 end
 
+function mesh_geometry_for_render_slice(data, setup; a, lattice_size, mesh_cache=nothing,
+    slice4=nothing)
+
+    if mesh_cache === nothing
+        return mesh_geometry_for_slice(data, setup; a=a, lattice_size=lattice_size)
+    end
+    slice4 === nothing &&
+        throw(ArgumentError("slice4 is required when mesh_cache is provided"))
+    return get!(mesh_cache, slice4) do
+        mesh_geometry_for_slice(data, setup; a=a, lattice_size=lattice_size)
+    end
+end
+
 function mesh_plot_geometry!(ax, geometry, setup)
     renderer = mesh_renderer_kind(setup)
     if renderer == :topological_charge_volume
@@ -204,6 +217,43 @@ function mesh_plot_geometry!(ax, geometry, setup)
         return action_density_blob_plot!(ax, geometry)
     end
     throw(ArgumentError("unsupported mesh renderer: $renderer"))
+end
+
+function delete_plot_obj!(ax, obj)
+    obj === nothing && return nothing
+    if obj isa AbstractVector
+        for item in obj
+            delete!(ax, item)
+        end
+    else
+        delete!(ax, obj)
+    end
+    return nothing
+end
+
+function contour_plot_group!(ax, data, group_levels, contour_style;
+    x_physical, y_physical, z_physical)
+
+    objects = Any[]
+    for spec in contour_plot_specs(contour_style, group_levels)
+        contour_kwargs = contour_plot_kwargs(spec.style, spec.levels)
+        push!(objects, GLMakie.contour!(
+            ax, x_physical, y_physical, z_physical, data; contour_kwargs...))
+    end
+    return objects
+end
+
+function plot_animation_slice!(ax, data, display_setup, levels; a, lattice_size,
+    x_physical, y_physical, z_physical, mesh_cache=nothing, slice4=nothing)
+
+    if display_setup.render_kind == :mesh
+        geometry = mesh_geometry_for_render_slice(data, display_setup;
+            a=a, lattice_size=lattice_size, mesh_cache=mesh_cache, slice4=slice4)
+        plot_obj, _ = mesh_plot_geometry!(ax, geometry, display_setup)
+        return plot_obj
+    end
+    return contour_plot_group!(ax, data, levels, display_setup.contour_style;
+        x_physical=x_physical, y_physical=y_physical, z_physical=z_physical)
 end
 
 function animation_render_plan(NT::Integer, display_setup, camera;
@@ -465,54 +515,27 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     plot_obj = Ref{Any}(nothing)
     current_slice4 = Ref{Union{Nothing,Int}}(nothing)
     mesh_cache = Dict{Int,Any}()
-    function delete_plot_obj!(obj)
-        obj === nothing && return nothing
-        if obj isa AbstractVector
-            for item in obj
-                delete!(ax, item)
-            end
-        else
-            delete!(ax, obj)
-        end
-        return nothing
-    end
-
-    function contour_plot_group!(data, group_levels)
-        objects = Any[]
-        for spec in contour_plot_specs(display_setup.contour_style, group_levels)
-            contour_kwargs = contour_plot_kwargs(spec.style, spec.levels)
-            push!(objects, GLMakie.contour!(
-                ax, x_physical, y_physical, z_physical, data; contour_kwargs...))
-        end
-        return objects
-    end
 
     if display_setup.render_kind == :contour
         dummy_data = zeros(Float64, NX, NY, NZ)
-        plot_obj[] = contour_plot_group!(dummy_data, [levels[1]])
+        plot_obj[] = contour_plot_group!(ax, dummy_data, [levels[1]],
+            display_setup.contour_style;
+            x_physical=x_physical, y_physical=y_physical, z_physical=z_physical)
     end
 
     function draw_slice!(slice4)
-        delete_plot_obj!(plot_obj[])
+        delete_plot_obj!(ax, plot_obj[])
 
         plaqs = @view plaqs_t[:, :, :, slice4]
         ax.title = movie_title
-
-        if display_setup.render_kind == :mesh
-            if cache_active
-                geometry = get!(mesh_cache, slice4) do
-                    mesh_geometry_for_slice(plaqs, display_setup;
-                        a=a, lattice_size=(NX, NY, NZ))
-                end
-                plot_obj[], _ = mesh_plot_geometry!(ax, geometry, display_setup)
-            else
-                geometry = mesh_geometry_for_slice(plaqs, display_setup;
-                    a=a, lattice_size=(NX, NY, NZ))
-                plot_obj[], _ = mesh_plot_geometry!(ax, geometry, display_setup)
-            end
-        else
-            plot_obj[] = contour_plot_group!(plaqs, levels)
-        end
+        plot_obj[] = plot_animation_slice!(ax, plaqs, display_setup, levels;
+            a=a,
+            lattice_size=(NX, NY, NZ),
+            x_physical=x_physical,
+            y_physical=y_physical,
+            z_physical=z_physical,
+            mesh_cache=cache_active ? mesh_cache : nothing,
+            slice4=slice4)
         limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
         current_slice4[] = slice4
         return nothing

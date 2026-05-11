@@ -4,7 +4,69 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after starting create_animation helper splitting.
+Last updated on 2026-05-11 after starting draw helper extraction.
+
+## Active note: 2026-05-11 draw helper extraction
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/extract-draw-helpers`.
+- Starting point: PR #45 was merged into `main`.
+- Goal:
+  - continue shrinking `create_animation` without changing rendered output;
+  - move plot deletion, contour plot grouping, mesh-cache geometry retrieval, and
+    per-slice plot dispatch into helpers;
+  - keep observable selection, gauge-field I/O, metadata assembly, and actual
+    GLMakie style behavior unchanged for this PR.
+- Scope:
+  - `delete_plot_obj!` deletes `nothing`, a single plot object, or a vector of
+    plot objects through the provided axis;
+  - `contour_plot_group!` owns the existing contour-spec loop;
+  - `mesh_geometry_for_render_slice` centralizes optional slice-keyed mesh cache
+    usage;
+  - `plot_animation_slice!` selects mesh vs contour plotting for one
+    fourth-direction slice.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `88%`;
+  - README/sample media path: about `90%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - `create_animation` is now smaller, but it still owns gauge-field loading,
+    observable selection, figure setup, and metadata assembly;
+  - GLMakie behavior still needs smoke/visual checks after helper movement;
+  - `Pkg.test()` is known to be blocked by the existing `Qt6Base_jll` manifest vs
+    registry mismatch until the package environment is refreshed deliberately.
+- Next likely PRs, in order:
+  1. Separate observable/display setup from gauge-field I/O.
+  2. Separate metadata assembly from movie recording.
+  3. Clean up user-facing example command structure.
+  4. True instanton/SU(3)-embedded validation once Gaugefields.jl-side work is
+     ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 262 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; ...'
+result: pass, direct create_animation smoke wrote:
+        /private/tmp/VisualizingLQCD-draw-helpers-smoke/smoke.mp4
+        /private/tmp/VisualizingLQCD-draw-helpers-smoke/smoke.metadata.json
+        metadata confirmed frame_count=16 and cached_slice_count=16
+
+git diff --check
+result: pass
+
+Pkg.test note:
+        not repeated on this branch; PR #45 already recorded that Pkg.test is
+        blocked before tests by the existing Qt6Base_jll 6.10.2+1 manifest vs
+        registry mismatch. This PR does not modify Project.toml or Manifest.toml.
+```
 
 ## Active note: 2026-05-11 create_animation helper splitting
 

@@ -7,6 +7,12 @@ using Wilsonloop
 const SAMPLE_BASENAME =
     "topological_density_noaxis_halfspeed"
 
+mutable struct DeleteRecorder
+    deleted::Vector{Any}
+end
+
+Base.delete!(recorder::DeleteRecorder, item) = (push!(recorder.deleted, item); recorder)
+
 function run_render_smoke_test()
     NX, NY, NZ, NT = VisualizingLQCD.CURRENT_TEST_LATTICE
     β = VisualizingLQCD.CURRENT_TEST_BETA
@@ -408,6 +414,26 @@ end
     @test_throws ArgumentError VisualizingLQCD.mesh_geometry_for_slice(
         fill(action_setup.body_level + 1, 2, 2, 2), unsupported_mesh_setup;
         a=1.0, lattice_size=(2, 2, 2))
+    render_cache = Dict{Int,Any}()
+    cached_action_geometry = VisualizingLQCD.mesh_geometry_for_render_slice(
+        fill(action_setup.body_level + 1, 2, 2, 2), action_setup;
+        a=1.0, lattice_size=(2, 2, 2), mesh_cache=render_cache, slice4=1)
+    cached_action_geometry_again = VisualizingLQCD.mesh_geometry_for_render_slice(
+        fill(0.0, 2, 2, 2), action_setup;
+        a=1.0, lattice_size=(2, 2, 2), mesh_cache=render_cache, slice4=1)
+    @test length(render_cache) == 1
+    @test cached_action_geometry_again.info.vertices ==
+          cached_action_geometry.info.vertices
+    @test_throws ArgumentError VisualizingLQCD.mesh_geometry_for_render_slice(
+        fill(action_setup.body_level + 1, 2, 2, 2), action_setup;
+        a=1.0, lattice_size=(2, 2, 2), mesh_cache=Dict{Int,Any}())
+    delete_recorder = DeleteRecorder(Any[])
+    @test VisualizingLQCD.delete_plot_obj!(delete_recorder, nothing) === nothing
+    @test isempty(delete_recorder.deleted)
+    @test VisualizingLQCD.delete_plot_obj!(delete_recorder, :single) === nothing
+    @test delete_recorder.deleted == Any[:single]
+    @test VisualizingLQCD.delete_plot_obj!(delete_recorder, [:a, :b]) === nothing
+    @test delete_recorder.deleted == Any[:single, :a, :b]
 
     topological_setup = VisualizingLQCD.topological_charge_display_level_setup(
         reshape([-4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0], 2, 2, 2, 1);
