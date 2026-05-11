@@ -136,6 +136,36 @@ end
           VisualizingLQCD.FRAME_MODE_SEQUENCE
     @test VisualizingLQCD.default_frame_mode(orbit_camera.motion) ==
           VisualizingLQCD.FRAME_MODE_FIXED
+    sequence_plan = VisualizingLQCD.animation_render_plan(
+        4, (render_kind=:contour,), static_camera;
+        framerate=8,
+        nloops=2,
+        frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
+        slice_hold_frames=2,
+        cache_render_slices=true,
+        figure_size=(320, 240),
+        show_render_progress=false,
+        show_axis_labels=false)
+    @test sequence_plan.framerate == 8
+    @test sequence_plan.total_frames == 16
+    @test sequence_plan.cache_active == false
+    @test sequence_plan.figure_size == (320, 240)
+    @test sequence_plan.show_axis_labels == false
+    mesh_fixed_plan = VisualizingLQCD.animation_render_plan(
+        4, (render_kind=:mesh,), orbit_camera;
+        nloops=2,
+        frame_mode=VisualizingLQCD.FRAME_MODE_FIXED,
+        fixed_slice4=2,
+        cache_render_slices=true,
+        show_render_progress=false)
+    @test mesh_fixed_plan.framerate == VisualizingLQCD.CURRENT_CAMERA_ORBIT_FRAMERATE
+    @test mesh_fixed_plan.total_frames == 8
+    @test mesh_fixed_plan.cache_active
+    @test mesh_fixed_plan.fixed_frame
+    @test_throws ArgumentError VisualizingLQCD.animation_render_plan(
+        4, (render_kind=:mesh,), static_camera; nloops=1.5)
+    @test_throws ArgumentError VisualizingLQCD.animation_render_plan(
+        4, (render_kind=:mesh,), static_camera; cache_render_slices=:yes)
     @test VisualizingLQCD.camera_motion_metadata(orbit_camera)["camera_motion"] == "orbit"
     @test VisualizingLQCD.camera_motion_metadata(orbit_camera)["orbit_seconds"] ≈ 640 / 14
 
@@ -321,6 +351,30 @@ end
     @test action_setup.render_style_info["render_style"] == "action_density_blob"
     @test action_setup.render_style_info["color_quantiles"] ==
           collect(VisualizingLQCD.CURRENT_ACTION_DENSITY_COLOR_QUANTILES)
+    visible_ticks = VisualizingLQCD.animation_axis_tick_spec(4, 0.1;
+        show_axis_labels=true)
+    @test collect(visible_ticks.positions) ≈ collect(range(0, stop=0.4, length=4))
+    @test visible_ticks.labels[1] == ""
+    @test visible_ticks.labels[2] != ""
+    hidden_ticks = VisualizingLQCD.animation_axis_tick_spec(4, 0.1;
+        show_axis_labels=false)
+    @test all(==(""), hidden_ticks.labels)
+    axis_camera = VisualizingLQCD.camera_settings(:mesh;
+        camera_azimuth=0.0,
+        camera_elevation=0.5)
+    axis_kwargs = VisualizingLQCD.animation_axis_kwargs(
+        action_setup,
+        VisualizingLQCD.render_theme_settings(VisualizingLQCD.RENDER_THEME_DARK),
+        axis_camera;
+        a=0.1,
+        lattice_size=(4, 4, 4),
+        movie_title="test title",
+        show_axis_labels=false)
+    @test axis_kwargs[:aspect] == :data
+    @test axis_kwargs[:xlabel] == ""
+    @test all(==(""), axis_kwargs[:xticks][2])
+    @test axis_kwargs[:azimuth] == 0.0
+    @test axis_kwargs[:elevation] == 0.5
     @test VisualizingLQCD.action_density_blob_color(0.5; qmin=0.0, qmax=1.0) isa
           VisualizingLQCD.Vec3f
     positive_low_color = VisualizingLQCD.topological_charge_volume_magnitude_color(

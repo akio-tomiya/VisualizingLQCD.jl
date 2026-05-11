@@ -206,6 +206,129 @@ function mesh_plot_geometry!(ax, geometry, setup)
     throw(ArgumentError("unsupported mesh renderer: $renderer"))
 end
 
+function animation_render_plan(NT::Integer, display_setup, camera;
+    framerate=nothing,
+    nloops=nothing,
+    frame_mode=nothing,
+    fixed_slice4=CURRENT_FIXED_SLICE4,
+    slice_hold_frames=CURRENT_SLICE_HOLD_FRAMES,
+    cache_render_slices=CURRENT_CACHE_RENDER_SLICES,
+    figure_size=CURRENT_FIGURE_SIZE,
+    show_render_progress=CURRENT_SHOW_RENDER_PROGRESS,
+    show_axis_labels=CURRENT_SHOW_AXIS_LABELS)
+
+    effective_framerate = framerate !== nothing ? framerate :
+                          (camera.motion == CAMERA_MOTION_ORBIT ?
+                           CURRENT_CAMERA_ORBIT_FRAMERATE : CURRENT_MOVIE_FRAMERATE)
+    effective_framerate > 0 || throw(ArgumentError("framerate should be positive"))
+    effective_frame_mode = frame_mode === nothing ? default_frame_mode(camera.motion) :
+                           validate_frame_mode(frame_mode)
+    effective_slice_hold_frames = validate_slice_hold_frames(slice_hold_frames)
+    effective_nloops = nloops === nothing ?
+                       default_movie_nloops(NT, effective_framerate, camera;
+                           frame_mode=effective_frame_mode,
+                           slice_hold_frames=effective_slice_hold_frames) : nloops
+    effective_nloops isa Integer || throw(ArgumentError("nloops should be an integer"))
+    effective_nloops > 0 || throw(ArgumentError("nloops should be positive"))
+    slice4_for_frame(1, NT; frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4,
+        slice_hold_frames=effective_slice_hold_frames)
+    cache_render_slices isa Bool || throw(ArgumentError("cache_render_slices should be Bool"))
+    effective_figure_size = validate_figure_size(figure_size)
+    effective_show_render_progress = validate_show_render_progress(show_render_progress)
+    effective_show_axis_labels = validate_show_axis_labels(show_axis_labels)
+    cache_active = cache_render_slices && display_setup.render_kind == :mesh
+    total_frames = total_movie_frames(NT, effective_nloops;
+        frame_mode=effective_frame_mode, slice_hold_frames=effective_slice_hold_frames)
+
+    return (
+        framerate=effective_framerate,
+        nloops=effective_nloops,
+        frame_mode=effective_frame_mode,
+        fixed_slice4=fixed_slice4,
+        slice_hold_frames=effective_slice_hold_frames,
+        figure_size=effective_figure_size,
+        show_render_progress=effective_show_render_progress,
+        show_axis_labels=effective_show_axis_labels,
+        cache_active=cache_active,
+        total_frames=total_frames,
+        fixed_frame=effective_frame_mode == FRAME_MODE_FIXED,
+    )
+end
+
+function animation_axis_tick_spec(N::Integer, a::Real; show_axis_labels::Bool)
+    positions = range(0, stop=a * N, length=N)
+    labels = [string(round(x, digits=CURRENT_TICK_DIGITS)) for x in positions]
+    for i in 1:CURRENT_TICK_STRIDE:length(labels)
+        labels[i] = ""
+    end
+    show_axis_labels || fill!(labels, "")
+    return (positions=positions, labels=labels)
+end
+
+function animation_axis_kwargs(display_setup, theme_settings, camera;
+    a, lattice_size, movie_title, show_axis_labels::Bool)
+
+    NX, NY, NZ = lattice_size
+    x_ticks = animation_axis_tick_spec(NX, a; show_axis_labels=show_axis_labels)
+    y_ticks = animation_axis_tick_spec(NY, a; show_axis_labels=show_axis_labels)
+    z_ticks = animation_axis_tick_spec(NZ, a; show_axis_labels=show_axis_labels)
+    axis_aspect = display_setup.render_kind == :mesh ? :data : CURRENT_ASPECT
+    axis_kwargs = Dict{Symbol,Any}(
+        :xlabel => show_axis_labels ? myxlabel : "",
+        :ylabel => show_axis_labels ? myylabel : "",
+        :zlabel => show_axis_labels ? myzlabel : "",
+        :title => movie_title,
+        :xticks => (x_ticks.positions, x_ticks.labels),
+        :yticks => (y_ticks.positions, y_ticks.labels),
+        :zticks => (z_ticks.positions, z_ticks.labels),
+        :aspect => axis_aspect,
+        :backgroundcolor => theme_settings.axis_background,
+        :xlabelcolor => theme_settings.text_color,
+        :ylabelcolor => theme_settings.text_color,
+        :zlabelcolor => theme_settings.text_color,
+        :titlecolor => theme_settings.text_color,
+        :xticklabelcolor => theme_settings.text_color,
+        :yticklabelcolor => theme_settings.text_color,
+        :zticklabelcolor => theme_settings.text_color,
+        :xtickcolor => theme_settings.text_color,
+        :ytickcolor => theme_settings.text_color,
+        :ztickcolor => theme_settings.text_color,
+        :xgridcolor => theme_settings.grid_color,
+        :ygridcolor => theme_settings.grid_color,
+        :zgridcolor => theme_settings.grid_color,
+    )
+    camera.azimuth === nothing || (axis_kwargs[:azimuth] = camera.azimuth)
+    camera.elevation === nothing || (axis_kwargs[:elevation] = camera.elevation)
+    camera.perspectiveness === nothing ||
+        (axis_kwargs[:perspectiveness] = camera.perspectiveness)
+    camera.viewmode === nothing || (axis_kwargs[:viewmode] = camera.viewmode)
+    return axis_kwargs
+end
+
+function record_animation_frames!(fig, ax, videoname, NT, camera, draw_slice!,
+    current_slice4, render_plan)
+
+    render_plan.fixed_frame && draw_slice!(render_plan.fixed_slice4)
+    render_progress = render_plan.show_render_progress ?
+                      Progress(render_plan.total_frames;
+                          desc=CURRENT_RENDER_PROGRESS_DESCRIPTION,
+                          showspeed=CURRENT_RENDER_PROGRESS_SHOWSPEED) :
+                      nothing
+    record(fig, videoname, 1:render_plan.total_frames;
+        framerate=render_plan.framerate) do i
+        apply_camera_settings!(ax, camera, i, render_plan.total_frames)
+        if !render_plan.fixed_frame
+            slice4 = slice4_for_frame(i, NT;
+                frame_mode=render_plan.frame_mode,
+                fixed_slice4=render_plan.fixed_slice4,
+                slice_hold_frames=render_plan.slice_hold_frames)
+            current_slice4[] == slice4 || draw_slice!(slice4)
+        end
+        render_progress === nothing || next!(render_progress)
+    end
+    return nothing
+end
+
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
@@ -296,26 +419,24 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         camera_orbit_seconds=camera_orbit_seconds,
         camera_perspectiveness=camera_perspectiveness,
         camera_viewmode=camera_viewmode)
-    effective_framerate = framerate !== nothing ? framerate :
-                          (camera.motion == CAMERA_MOTION_ORBIT ?
-                           CURRENT_CAMERA_ORBIT_FRAMERATE : CURRENT_MOVIE_FRAMERATE)
-    effective_framerate > 0 || throw(ArgumentError("framerate should be positive"))
-    effective_frame_mode = frame_mode === nothing ? default_frame_mode(camera.motion) :
-                           validate_frame_mode(frame_mode)
-    effective_slice_hold_frames = validate_slice_hold_frames(slice_hold_frames)
-    effective_nloops = nloops === nothing ?
-                       default_movie_nloops(NT, effective_framerate, camera;
-                           frame_mode=effective_frame_mode,
-                           slice_hold_frames=effective_slice_hold_frames) : nloops
-    effective_nloops isa Integer || throw(ArgumentError("nloops should be an integer"))
-    effective_nloops > 0 || throw(ArgumentError("nloops should be positive"))
-    slice4_for_frame(1, NT; frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4,
-        slice_hold_frames=effective_slice_hold_frames)
-    cache_render_slices isa Bool || throw(ArgumentError("cache_render_slices should be Bool"))
-    effective_figure_size = validate_figure_size(figure_size)
-    effective_show_render_progress = validate_show_render_progress(show_render_progress)
-    effective_show_axis_labels = validate_show_axis_labels(show_axis_labels)
-    cache_active = cache_render_slices && display_setup.render_kind == :mesh
+    render_plan = animation_render_plan(NT, display_setup, camera;
+        framerate=framerate,
+        nloops=nloops,
+        frame_mode=frame_mode,
+        fixed_slice4=fixed_slice4,
+        slice_hold_frames=slice_hold_frames,
+        cache_render_slices=cache_render_slices,
+        figure_size=figure_size,
+        show_render_progress=show_render_progress,
+        show_axis_labels=show_axis_labels)
+    effective_framerate = render_plan.framerate
+    effective_frame_mode = render_plan.frame_mode
+    effective_slice_hold_frames = render_plan.slice_hold_frames
+    effective_nloops = render_plan.nloops
+    effective_figure_size = render_plan.figure_size
+    effective_show_render_progress = render_plan.show_render_progress
+    effective_show_axis_labels = render_plan.show_axis_labels
+    cache_active = render_plan.cache_active
 
     #= To check iso-level, please use here
     hist_p = histogram(vec(plaqs_t))
@@ -331,62 +452,11 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     fig = Figure(
         size=effective_figure_size,
         backgroundcolor=theme_settings.figure_background)
-    # label setting.
-    x_positions = range(0, stop=a * NX, length=NX)
-    x_labels = [string(round(x, digits=CURRENT_TICK_DIGITS)) for x in x_positions]
-
-    y_positions = range(0, stop=a * NY, length=NY)
-    y_labels = [string(round(y, digits=CURRENT_TICK_DIGITS)) for y in y_positions]
-
-    z_positions = range(0, stop=a * NZ, length=NZ)
-    z_labels = [string(round(z, digits=CURRENT_TICK_DIGITS)) for z in z_positions]
-
-    for i in 1:CURRENT_TICK_STRIDE:length(x_labels)
-        x_labels[i] = ""
-    end
-    for i in 1:CURRENT_TICK_STRIDE:length(y_labels)
-        y_labels[i] = ""
-    end
-    for i in 1:CURRENT_TICK_STRIDE:length(z_labels)
-        z_labels[i] = ""
-    end
-
-    if !effective_show_axis_labels
-        fill!(x_labels, "")
-        fill!(y_labels, "")
-        fill!(z_labels, "")
-    end
-
-    axis_aspect = display_setup.render_kind == :mesh ? :data : CURRENT_ASPECT
-    axis_kwargs = Dict{Symbol,Any}(
-        :xlabel => effective_show_axis_labels ? myxlabel : "",
-        :ylabel => effective_show_axis_labels ? myylabel : "",
-        :zlabel => effective_show_axis_labels ? myzlabel : "",
-        :title => movie_title,
-        :xticks => (x_positions, x_labels),
-        :yticks => (y_positions, y_labels),
-        :zticks => (z_positions, z_labels),
-        :aspect => axis_aspect,
-        :backgroundcolor => theme_settings.axis_background,
-        :xlabelcolor => theme_settings.text_color,
-        :ylabelcolor => theme_settings.text_color,
-        :zlabelcolor => theme_settings.text_color,
-        :titlecolor => theme_settings.text_color,
-        :xticklabelcolor => theme_settings.text_color,
-        :yticklabelcolor => theme_settings.text_color,
-        :zticklabelcolor => theme_settings.text_color,
-        :xtickcolor => theme_settings.text_color,
-        :ytickcolor => theme_settings.text_color,
-        :ztickcolor => theme_settings.text_color,
-        :xgridcolor => theme_settings.grid_color,
-        :ygridcolor => theme_settings.grid_color,
-        :zgridcolor => theme_settings.grid_color,
-    )
-    camera.azimuth === nothing || (axis_kwargs[:azimuth] = camera.azimuth)
-    camera.elevation === nothing || (axis_kwargs[:elevation] = camera.elevation)
-    camera.perspectiveness === nothing ||
-        (axis_kwargs[:perspectiveness] = camera.perspectiveness)
-    camera.viewmode === nothing || (axis_kwargs[:viewmode] = camera.viewmode)
+    axis_kwargs = animation_axis_kwargs(display_setup, theme_settings, camera;
+        a=a,
+        lattice_size=(NX, NY, NZ),
+        movie_title=movie_title,
+        show_axis_labels=effective_show_axis_labels)
 
     # Make Axis3
     ax = Axis3(fig[1, 1]; axis_kwargs...)
@@ -448,25 +518,8 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         return nothing
     end
 
-    t_end = total_movie_frames(NT, effective_nloops;
-        frame_mode=effective_frame_mode, slice_hold_frames=effective_slice_hold_frames)
-    fixed_frame = effective_frame_mode == FRAME_MODE_FIXED
-    fixed_frame && draw_slice!(fixed_slice4)
-    render_progress = effective_show_render_progress ?
-                      Progress(t_end;
-                          desc=CURRENT_RENDER_PROGRESS_DESCRIPTION,
-                          showspeed=CURRENT_RENDER_PROGRESS_SHOWSPEED) :
-                      nothing
-    record(fig, videoname, 1:t_end; framerate=effective_framerate) do i
-        apply_camera_settings!(ax, camera, i, t_end)
-        if !fixed_frame
-            slice4 = slice4_for_frame(i, NT;
-                frame_mode=effective_frame_mode, fixed_slice4=fixed_slice4,
-                slice_hold_frames=effective_slice_hold_frames)
-            current_slice4[] == slice4 || draw_slice!(slice4)
-        end
-        render_progress === nothing || next!(render_progress)
-    end
+    record_animation_frames!(fig, ax, videoname, NT, camera, draw_slice!, current_slice4,
+        render_plan)
 
     metadata = animation_metadata(
         videoname=videoname,
