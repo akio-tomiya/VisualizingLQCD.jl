@@ -431,6 +431,24 @@ function animation_display_setup_for_gaugefield(U, NX, NY, NZ, NT, NC;
     )
 end
 
+function initialize_animation_gaugefield(NX, NY, NZ, NT, NC;
+    nwing=CURRENT_NWING,
+    condition=CURRENT_GENERATION_INITIAL_CONDITION)
+
+    return Initialize_Gaugefields(NC, nwing, NX, NY, NZ, NT; condition=condition)
+end
+
+function load_animation_gaugefield(filename, NX, NY, NZ, NT, NC;
+    nwing=CURRENT_NWING,
+    condition=CURRENT_GENERATION_INITIAL_CONDITION)
+
+    U = initialize_animation_gaugefield(NX, NY, NZ, NT, NC;
+        nwing=nwing, condition=condition)
+    ildg = ILDG(filename)
+    load_gaugefield!(U, 1, ildg, [NX, NY, NZ, NT], NC)
+    return U
+end
+
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
@@ -464,14 +482,10 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     show_axis_labels=CURRENT_SHOW_AXIS_LABELS)
 
     #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
-    Nwing = CURRENT_NWING
     a = calculate_a(beta)
     scale_factor = a
 
-    U1 = Initialize_Gaugefields(
-        NC, Nwing, NX, NY, NZ, NT, condition=CURRENT_GENERATION_INITIAL_CONDITION)
-    ildg = ILDG(filename)
-    load_gaugefield!(U1, 1, ildg, [NX, NY, NZ, NT], NC)
+    U1 = load_animation_gaugefield(filename, NX, NY, NZ, NT, NC)
     display_result = animation_display_setup_for_gaugefield(U1, NX, NY, NZ, NT, NC;
         level_target=level_target,
         render_style=render_style,

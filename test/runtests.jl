@@ -264,6 +264,10 @@ end
     @test VisualizingLQCD.default_render_style_for_level_target(
         VisualizingLQCD.LEVEL_TARGET_LEGACY_NEGLOG_HIGH) ==
           VisualizingLQCD.RENDER_STYLE_CURRENT
+    initialized_u = VisualizingLQCD.initialize_animation_gaugefield(2, 2, 2, 2, 3)
+    @test length(initialized_u) == 4
+    @test initialized_u[1].NC == 3
+    @test initialized_u[1].NV == 16
     setup_u = VisualizingLQCD.Initialize_Gaugefields(
         3, 0, 2, 2, 2, 2; condition=VisualizingLQCD.CURRENT_GENERATION_INITIAL_CONDITION)
     action_display_result = VisualizingLQCD.animation_display_setup_for_gaugefield(

@@ -4,7 +4,63 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after starting display setup extraction.
+Last updated on 2026-05-11 after starting gauge-field I/O extraction.
+
+## Active note: 2026-05-11 gauge-field I/O extraction
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/extract-gaugefield-io`.
+- Starting point: PR #47 was merged into `main`.
+- Goal:
+  - continue reducing `create_animation` while preserving output behavior;
+  - move gauge-field initialization and ILDG loading into I/O helpers;
+  - keep display setup, figure setup, drawing, metadata assembly, and file output
+    unchanged for this PR.
+- Scope:
+  - `initialize_animation_gaugefield` owns `Initialize_Gaugefields` defaults for
+    animation loading;
+  - `load_animation_gaugefield` owns `ILDG(filename)` and `load_gaugefield!`;
+  - `create_animation` now delegates the gauge-field loading step before calling
+    `animation_display_setup_for_gaugefield`.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `90%`;
+  - README/sample media path: about `90%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - `create_animation` still owns figure setup, metadata assembly, and metadata
+    writing;
+  - `Pkg.test()` remains blocked by the existing `Qt6Base_jll` manifest vs
+    registry mismatch until the package environment is deliberately refreshed;
+  - GLMakie/direct smoke remains the practical guard for render-path movement.
+- Next likely PRs, in order:
+  1. Separate metadata assembly from movie recording.
+  2. Clean up user-facing example command structure.
+  3. Consider a deliberate package-environment refresh for `Pkg.test`.
+  4. True instanton/SU(3)-embedded validation once Gaugefields.jl-side work is
+     ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 276 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; ...'
+result: pass, direct create_animation smoke wrote:
+        /private/tmp/VisualizingLQCD-gaugefield-io-smoke/smoke.mp4
+        /private/tmp/VisualizingLQCD-gaugefield-io-smoke/smoke.metadata.json
+        metadata confirmed filename=/private/tmp/VisualizingLQCD-gaugefield-io-smoke/smoke.ildg,
+        observable.kind=local_action_density, render_style=action_density_blob,
+        frame_count=16, cached_slice_count=16
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-11 display setup extraction
 
