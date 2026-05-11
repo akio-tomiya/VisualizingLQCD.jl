@@ -344,6 +344,16 @@ end
     @test action_geometry.info.vertices > 0
     @test action_geometry.info.faces > 0
     @test length(action_geometry.colors) == action_geometry.info.vertices
+    helper_action_geometry = VisualizingLQCD.mesh_geometry_for_slice(
+        fill(action_setup.body_level + 1, 2, 2, 2), action_setup;
+        a=1.0, lattice_size=(2, 2, 2))
+    @test VisualizingLQCD.mesh_renderer_kind(action_setup) == :action_density_blob
+    @test helper_action_geometry.info.vertices == action_geometry.info.vertices
+    @test helper_action_geometry.info.faces == action_geometry.info.faces
+    unsupported_mesh_setup = merge(action_setup, (mesh_renderer=:unsupported,))
+    @test_throws ArgumentError VisualizingLQCD.mesh_geometry_for_slice(
+        fill(action_setup.body_level + 1, 2, 2, 2), unsupported_mesh_setup;
+        a=1.0, lattice_size=(2, 2, 2))
 
     topological_setup = VisualizingLQCD.topological_charge_display_level_setup(
         reshape([-4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0], 2, 2, 2, 1);
@@ -440,6 +450,14 @@ end
     @test topological_volume_geometry.negative !== nothing
     @test topological_volume_geometry.info["positive_info"].vertices > 0
     @test topological_volume_geometry.info["negative_info"].vertices > 0
+    helper_topological_volume_geometry = VisualizingLQCD.mesh_geometry_for_slice(
+        volume_slice, topological_volume_setup; a=1.0, lattice_size=(3, 3, 3))
+    @test VisualizingLQCD.mesh_renderer_kind(topological_volume_setup) ==
+          :topological_charge_volume
+    @test helper_topological_volume_geometry.info["positive_info"].vertices ==
+          topological_volume_geometry.info["positive_info"].vertices
+    @test helper_topological_volume_geometry.info["negative_info"].vertices ==
+          topological_volume_geometry.info["negative_info"].vertices
     gradient_slice = zeros(6, 3, 3)
     gradient_slice[2, :, :] .= 1.2
     gradient_slice[3, :, :] .= 2.0
