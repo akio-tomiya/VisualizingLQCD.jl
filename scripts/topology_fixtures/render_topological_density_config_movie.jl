@@ -136,6 +136,7 @@ function render_movie(mode, options)
         camera_motion=options.camera_motion,
         camera_orbit_turns=options.camera_orbit_turns,
         camera_orbit_seconds=options.camera_orbit_seconds,
+        show_axis_labels=options.show_axis_labels,
         show_render_progress=options.show_render_progress)
     return (
         label="$(String(mode)) movie",
@@ -154,6 +155,7 @@ function options_summary_text(options)
         "style_preset = $(String(options.style_preset))",
         "frame_mode = $(String(options.frame_mode))",
         "camera_motion = $(String(options.camera_motion))",
+        "show_axis_labels = $(options.show_axis_labels)",
     ), "\n")
 end
 
@@ -369,6 +371,8 @@ function main(args=ARGS)
             string(VisualizingLQCD.CURRENT_CAMERA_ORBIT_SECONDS))),
         cache_render_slices=parse_bool(arg_value(args, "cache-render-slices", "true"),
             "--cache-render-slices"),
+        show_axis_labels=parse_bool(arg_value(args, "show-axis-labels", "true"),
+            "--show-axis-labels"),
         show_render_progress=parse_bool(arg_value(args, "show-render-progress", "true"),
             "--show-render-progress"),
     )
