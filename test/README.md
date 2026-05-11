@@ -3,7 +3,7 @@
 - 2025/01/11
 - A. Tomiya akio@yukawa.kyoto-u.ac.jp 
 
-<img src="plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif" alt="QCD vacuum" width="300">
+<img src="topological_density_noaxis_halfspeed.gif" alt="Topological charge density" width="300">
 
 [Another example (Youtube)](http://youtube.com/shorts/nscMhDamzfg)
 
@@ -11,7 +11,7 @@
 
 This code set visualizes a configuration in **ILDG** format. This is written in Julia language. This contains configuration generation through [JuliaQCD](https://github.com/JuliaQCD).
 
-The fourth lattice direction is shown as a sequence of Euclidean slices; it is not treated as real-time evolution. By default, the package renders local action-density blobs inspired by the VisualQCD / QCD Lava Lamp style. The older plaquette log iso-surface renderer is still available as a legacy mode.
+The fourth lattice direction is shown as a sequence of Euclidean slices; it is not treated as real-time evolution. The sample GIF above uses the topological charge-density renderer. By default, the package renders local action-density blobs inspired by the VisualQCD / QCD Lava Lamp style. The older plaquette log iso-surface renderer is still available as a legacy mode.
 
 # How to use
 
@@ -50,14 +50,13 @@ end
 One can use a sample [configuration file](https://www.dropbox.com/scl/fi/ujkmaeszcm33gku7kl67v/Conf24242432beta6.0.ildg?rlkey=4fyzg3krxsy7azlcjgl68nvsm&dl=0) (ILDG file).
 
 To rotate the camera during the movie, pass
-`camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT`. The default orbit timing
-is about 45.7 seconds per full turn at 14 fps, and keeps one fourth-direction
-slice fixed by default. The bundled sample GIF instead uses
-`frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`, `nloops=7`, `framerate=17`,
-and `slice_hold_frames=2`, so the `64` Euclidean fourth-direction slices loop
-exactly seven times while the camera completes one full turn. The README media
-are rendered at `480 x 480`, the GIF is displayed at `300` px, and axis labels
-are hidden to avoid label shimmer during the camera orbit.
+`camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT`. The bundled README GIF
+uses the topological charge-density volume renderer with
+`frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`, `nloops=4`, and
+`framerate=8`, so the `32` Euclidean fourth-direction slices loop exactly four
+times while the camera completes one full turn. The source movie is rendered at
+`480 x 480`, the GIF is displayed at `300` px, and axis labels are hidden to
+avoid label shimmer during the camera orbit.
 
 ## Visualization from scratch
 
@@ -73,8 +72,9 @@ configuration_generation.jl : Configuration generation with the heatbath algorit
 constants.jl : constants are defined
 header.jl : packages 
 install_packages.jl : package installer
-plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4 : sample action-density slice-sequence orbit video
-plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif : sample action-density slice-sequence orbit video
+topological_density_noaxis_halfspeed.mp4 : sample topological charge-density slice-sequence orbit video
+topological_density_noaxis_halfspeed.mp4.metadata.json : metadata sidecar for the sample video
+topological_density_noaxis_halfspeed.gif : README GIF generated from the sample video
 visualization.jl : A code for visulalization
 ```
 

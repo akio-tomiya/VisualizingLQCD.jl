@@ -3,7 +3,7 @@
 - 2025/01/11
 - A. Tomiya akio@yukawa.kyoto-u.ac.jp 
 
-<img src="plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif" alt="QCD vacuum" width="300">
+<img src="topological_density_noaxis_halfspeed.gif" alt="Topological charge density" width="300">
 
 [Another example (Youtube)](http://youtube.com/shorts/nscMhDamzfg)
 
@@ -11,7 +11,7 @@
 
 This code set visualizes a configuration in **ILDG** format. This is written in Julia language. This contains configuration generation through [JuliaQCD](https://github.com/JuliaQCD).
 
-The fourth lattice direction is shown as a sequence of Euclidean slices; it is not treated as real-time evolution. By default, the package renders local action-density blobs inspired by the VisualQCD / QCD Lava Lamp style. The older plaquette log iso-surface renderer is still available as a legacy mode.
+The fourth lattice direction is shown as a sequence of Euclidean slices; it is not treated as real-time evolution. The sample GIF above uses the topological charge-density renderer. By default, the package renders local action-density blobs inspired by the VisualQCD / QCD Lava Lamp style. The older plaquette log iso-surface renderer is still available as a legacy mode.
 
 # How to use
 
@@ -74,7 +74,7 @@ upper-tail `|q|` quantiles `(0.94, 0.999)`, and the mesh color encodes local
 charge progresses from cyan to blue.
 
 ```julia
-topological_videoname = "topological_charge_density$(NX)$(NY)$(NZ)$(NT)beta$(β).mp4"
+topological_videoname = "topological_density_noaxis_halfspeed.mp4"
 
 create_animation(
     NX, NY, NZ, NT, NC, topological_videoname;
@@ -84,9 +84,12 @@ create_animation(
     render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME,
     camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT,
     frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
-    nloops=2,
+    camera_orbit_turns=1,
+    nloops=4,
     framerate=8,
     figure_size=(480, 480),
+    show_axis_labels=false,
+    show_render_progress=true,
 )
 ```
 
@@ -119,33 +122,33 @@ To rotate while stepping through fourth-direction slices, pass
 Repeated action-density meshes are cached by slice by default; pass
 `cache_render_slices=false` to disable this.
 
-The bundled sample movie uses the periodic fourth-direction sequence and one
-camera turn:
+The bundled README sample uses the topological charge-density volume renderer,
+the periodic fourth-direction sequence, and one camera turn:
 
 ```julia
 create_animation(
-    NX, NY, NZ, NT, NC, videoname;
+    NX, NY, NZ, NT, NC, topological_videoname;
     beta=β,
     filename=confname,
+    level_target=VisualizingLQCD.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY,
+    render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME,
     camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT,
     frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
     camera_orbit_turns=1,
-    nloops=7,
-    framerate=17,
-    slice_hold_frames=2,
+    nloops=4,
+    framerate=8,
     figure_size=(480, 480),
     show_axis_labels=false,
+    show_render_progress=true,
 )
 ```
 
-For the `32^3 x 64` sample this gives `896` frames: all `64` Euclidean
-fourth-direction slices are shown seven times, each slice is held for two
-frames, and the camera completes one full turn. Compared with the previous
-`768`-frame README sample, the fourth-direction slice motion is about `1.21`
-times faster while the camera-orbit speed stays close to the accepted version.
-The source movie and bundled GIF are rendered at `480 x 480`; the README shows
-the GIF at `300` px. Axis labels are hidden in the bundled README movie to avoid
-label shimmer during the camera orbit; the 3D box and grid remain visible.
+For the bundled `24^3 x 32` sample this gives `128` frames: all `32` Euclidean
+fourth-direction slices are shown four times while the camera completes one
+full turn. The source movie is rendered at `480 x 480`; the bundled README GIF
+is downsampled to `300` px to keep the repository size manageable. Axis labels
+are hidden in the bundled README movie to avoid label shimmer during the camera
+orbit; the 3D box and grid remain visible.
 
 ## Visualization from scratch
 
@@ -180,8 +183,9 @@ main()
 README.md : This file 
 src
 test
-plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4 : sample action-density slice-sequence orbit video
-plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif : sample action-density slice-sequence orbit video
+topological_density_noaxis_halfspeed.mp4 : sample topological charge-density slice-sequence orbit video
+topological_density_noaxis_halfspeed.mp4.metadata.json : metadata sidecar for the sample video
+topological_density_noaxis_halfspeed.gif : README GIF generated from the sample video
 ```
 
 

@@ -4,8 +4,82 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after adding the topological-density oracle-check
-branch.
+Last updated on 2026-05-11 after preparing the topological-density README
+sample media branch.
+
+## Active note: 2026-05-11 topological-density README media replacement
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/topological-readme-media`.
+- Starting point: PR #40 was merged into `main`.
+- Goal:
+  - replace the old large action-density README sample GIF with the accepted
+    topological charge-density half-speed candidate;
+  - keep the README display width at `300` px so the rendered page is not too
+    visually large;
+  - keep the old action-density/legacy renderer documented as code options, not
+    as the README hero media.
+- Accepted visual-review artifact:
+
+```text
+/private/tmp/VisualizingLQCD-topological-readme-halfspeed-remote-20260511/topological_density_noaxis_halfspeed_300.gif
+```
+
+- Durable source artifact:
+
+```text
+studio1:/Users/akio/VisualizingLQCD-review-artifacts/topological-readme-halfspeed-20260511
+```
+
+- New tracked sample media:
+  - `topological_density_noaxis_halfspeed.mp4`;
+  - `topological_density_noaxis_halfspeed.mp4.metadata.json`;
+  - `topological_density_noaxis_halfspeed.gif`;
+  - `test/topological_density_noaxis_halfspeed.gif`.
+- Removed old tracked sample media:
+  - `plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.mp4`;
+  - `plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif`;
+  - `test/plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn.gif`.
+- Sample settings:
+  - lattice: `24^3 x 32`;
+  - render style: `topological_charge_volume`;
+  - frame mode: `slice4_sequence`;
+  - `nloops=4`, `framerate=8`, `frame_count=128`, duration `16.0` seconds;
+  - `camera_orbit_turns=1`;
+  - `show_axis_labels=false`;
+  - README GIF width: `300` px.
+- Source checksums:
+
+```text
+5e46a43cb2f5f34f98a8cb5ab5bb88b3b87fd25b6a8cb324103eef6a08f1fb50  topological_density_noaxis_halfspeed.mp4
+094755a07fbb743d78d057b09220070b245e781e22a23acda9374f18fe06748d  topological_density_noaxis_halfspeed_300.gif
+eb37e3fd5d459d742c950b4c6d61144b8960f57bb3918a168ec2bcab1a4d8b79  topological_density_noaxis_halfspeed.mp4.metadata.json
+```
+
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 218 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass, 218 tests, render smoke skipped
+
+git diff --check
+result: pass
+
+file topological_density_noaxis_halfspeed.gif topological_density_noaxis_halfspeed.mp4 test/topological_density_noaxis_halfspeed.gif
+result: root/test GIFs are GIF89a 300 x 300; MP4 is ISO Media
+
+du -h topological_density_noaxis_halfspeed.gif topological_density_noaxis_halfspeed.mp4 test/topological_density_noaxis_halfspeed.gif
+result: 2.2M GIF, 2.9M MP4, 2.2M test GIF
+```
 
 ## Active note: 2026-05-11 topological-density oracle check
 

@@ -5,7 +5,7 @@ using Test
 using Wilsonloop
 
 const SAMPLE_BASENAME =
-    "plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn"
+    "topological_density_noaxis_halfspeed"
 
 function run_render_smoke_test()
     NX, NY, NZ, NT = VisualizingLQCD.CURRENT_TEST_LATTICE
@@ -148,8 +148,13 @@ end
 end
 
 @testset "Metadata contracts" begin
-    sample_lattice = (32, 32, 32, 64)
-    sample_summary = (level=1.0, isorange=0.5, min=0.0, max=2.0, mode=1.0)
+    sample_lattice = (24, 24, 24, 32)
+    sample_summary = (
+        level=5.2156190850267185e-8,
+        isorange=0.00010747313686192862,
+        min=-0.0014794934375611478,
+        max=0.0017322657400366298,
+        mode=5.2156190850267185e-8)
     sample_camera = VisualizingLQCD.camera_settings(:mesh;
         camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT,
         camera_azimuth=0.0,
@@ -157,36 +162,42 @@ end
     metadata = VisualizingLQCD.animation_metadata(
         videoname="$(SAMPLE_BASENAME).mp4",
         metadata_filename="$(SAMPLE_BASENAME).mp4.metadata.json",
-        filename="Conf32323264beta6.0-gf05hb40flow200.ildg",
+        filename="Conf24242432beta6.0.ildg",
         lattice_size=sample_lattice,
         nc=3,
         beta=6.0,
         flow_steps=200,
-        levels=[1.0],
+        levels=[
+            -0.0006161936800660506,
+            -0.00020275648206484858,
+            0.00020275648206484858,
+            0.0006161936800660506,
+        ],
         level_summary=sample_summary,
-        framerate=17,
-        nloops=7,
-        title="Action-density blob",
+        framerate=8,
+        nloops=4,
+        title="Topological charge density",
         figure_size=(480, 480),
         frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
-        slice_hold_frames=2,
+        slice_hold_frames=1,
         render_axis_info=VisualizingLQCD.render_axis_metadata(false),
         camera_info=VisualizingLQCD.camera_motion_metadata(sample_camera),
-        observable_info=VisualizingLQCD.local_action_density_observable_metadata())
+        observable_info=VisualizingLQCD.topological_charge_density_observable_metadata())
 
     @test metadata["interpretation"]["not_real_time_minkowski_evolution"] == true
     @test metadata["interpretation"]["screen_time_label"] == false
     @test metadata["configuration"]["lattice_size"] == collect(sample_lattice)
     @test metadata["frame_selection"]["frame_mode"] == "slice4_sequence"
     @test metadata["frame_selection"]["fixed_slice4"] === nothing
-    @test metadata["frame_selection"]["slice_hold_frames"] == 2
-    @test metadata["render"]["frame_count"] == 896
-    @test metadata["render"]["duration_seconds"] ≈ 896 / 17
+    @test metadata["frame_selection"]["slice_hold_frames"] == 1
+    @test metadata["render"]["frame_count"] == 128
+    @test metadata["render"]["duration_seconds"] ≈ 16.0
     @test metadata["render"]["figure_size"] == [480, 480]
     @test metadata["render"]["show_axis_labels"] == false
+    @test metadata["observable"]["kind"] == "topological_charge_density"
     @test length(metadata["frame_map"]) == metadata["render"]["frame_count"]
     @test metadata["frame_map"][1] == Dict("frame" => 1, "slice4" => 1)
-    @test metadata["frame_map"][end] == Dict("frame" => 896, "slice4" => 64)
+    @test metadata["frame_map"][end] == Dict("frame" => 128, "slice4" => 32)
 end
 
 @testset "Display and render setup contracts" begin
@@ -592,14 +603,18 @@ end
         String)
     @test occursin("$(SAMPLE_BASENAME).gif", readme_text)
     @test occursin("width=\"300\"", readme_text)
-    @test occursin("`896` frames", readme_text)
+    @test occursin("`128` frames", readme_text)
     @test occursin("show_axis_labels=false", readme_text)
     @test occursin("LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY", readme_text)
     @test occursin("RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME", readme_text)
     @test occursin("`abs(q)`", readme_text)
+    @test occursin("$(SAMPLE_BASENAME).mp4.metadata.json", readme_text)
+    @test !occursin("plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn",
+        readme_text)
     @test occursin("q0.940", topology_readme_text)
     @test occursin("--show-render-progress true", topology_readme_text)
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).mp4"))
+    @test isfile(joinpath(root, "$(SAMPLE_BASENAME).mp4.metadata.json"))
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).gif"))
     @test isfile(joinpath(root, "test", "$(SAMPLE_BASENAME).gif"))
 end
