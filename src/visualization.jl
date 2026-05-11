@@ -355,6 +355,38 @@ function animation_axis_kwargs(display_setup, theme_settings, camera;
     return axis_kwargs
 end
 
+function animation_spatial_coordinates(a::Real, lattice_size)
+    NX, NY, NZ = lattice_size
+    return (
+        x_physical=(a, a * NX),
+        y_physical=(a, a * NY),
+        z_physical=(a, a * NZ),
+        axis_limits=(0, a * NX, 0, a * NY, 0, a * NZ),
+    )
+end
+
+function initialize_animation_scene(display_setup, theme_settings, camera;
+    a, lattice_size, movie_title, figure_size, show_axis_labels::Bool)
+
+    coordinates = animation_spatial_coordinates(a, lattice_size)
+    fig = Figure(size=figure_size, backgroundcolor=theme_settings.figure_background)
+    axis_kwargs = animation_axis_kwargs(display_setup, theme_settings, camera;
+        a=a,
+        lattice_size=lattice_size,
+        movie_title=movie_title,
+        show_axis_labels=show_axis_labels)
+    ax = Axis3(fig[1, 1]; axis_kwargs...)
+    limits!(ax, coordinates.axis_limits...)
+    return (
+        fig=fig,
+        ax=ax,
+        x_physical=coordinates.x_physical,
+        y_physical=coordinates.y_physical,
+        z_physical=coordinates.z_physical,
+        axis_limits=coordinates.axis_limits,
+    )
+end
+
 function record_animation_frames!(fig, ax, videoname, NT, camera, draw_slice!,
     current_slice4, render_plan)
 
@@ -577,23 +609,14 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     display(hist_p)
     =#
 
-    # Set coordinate
-    x_physical = (a, a * NX)
-    y_physical = (a, a * NY)
-    z_physical = (a, a * NZ)
-
-    fig = Figure(
-        size=effective_figure_size,
-        backgroundcolor=theme_settings.figure_background)
-    axis_kwargs = animation_axis_kwargs(display_setup, theme_settings, camera;
+    scene = initialize_animation_scene(display_setup, theme_settings, camera;
         a=a,
         lattice_size=(NX, NY, NZ),
         movie_title=movie_title,
+        figure_size=effective_figure_size,
         show_axis_labels=effective_show_axis_labels)
-
-    # Make Axis3
-    ax = Axis3(fig[1, 1]; axis_kwargs...)
-    limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
+    fig = scene.fig
+    ax = scene.ax
 
     plot_obj = Ref{Any}(nothing)
     current_slice4 = Ref{Union{Nothing,Int}}(nothing)
@@ -603,7 +626,9 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         dummy_data = zeros(Float64, NX, NY, NZ)
         plot_obj[] = contour_plot_group!(ax, dummy_data, [levels[1]],
             display_setup.contour_style;
-            x_physical=x_physical, y_physical=y_physical, z_physical=z_physical)
+            x_physical=scene.x_physical,
+            y_physical=scene.y_physical,
+            z_physical=scene.z_physical)
     end
 
     function draw_slice!(slice4)
@@ -614,12 +639,12 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         plot_obj[] = plot_animation_slice!(ax, plaqs, display_setup, levels;
             a=a,
             lattice_size=(NX, NY, NZ),
-            x_physical=x_physical,
-            y_physical=y_physical,
-            z_physical=z_physical,
+            x_physical=scene.x_physical,
+            y_physical=scene.y_physical,
+            z_physical=scene.z_physical,
             mesh_cache=cache_active ? mesh_cache : nothing,
             slice4=slice4)
-        limits!(ax, 0, a * NX, 0, a * NY, 0, a * NZ)
+        limits!(ax, scene.axis_limits...)
         current_slice4[] = slice4
         return nothing
     end

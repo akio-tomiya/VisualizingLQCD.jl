@@ -460,6 +460,11 @@ end
     @test all(==(""), axis_kwargs[:xticks][2])
     @test axis_kwargs[:azimuth] == 0.0
     @test axis_kwargs[:elevation] == 0.5
+    coordinates = VisualizingLQCD.animation_spatial_coordinates(0.1, (4, 5, 6))
+    @test coordinates.x_physical == (0.1, 0.4)
+    @test coordinates.y_physical == (0.1, 0.5)
+    @test all(isapprox.(coordinates.z_physical, (0.1, 0.6)))
+    @test all(isapprox.(coordinates.axis_limits, (0, 0.4, 0, 0.5, 0, 0.6)))
     @test VisualizingLQCD.action_density_blob_color(0.5; qmin=0.0, qmax=1.0) isa
           VisualizingLQCD.Vec3f
     positive_low_color = VisualizingLQCD.topological_charge_volume_magnitude_color(
