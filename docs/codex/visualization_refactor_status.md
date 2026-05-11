@@ -4,8 +4,68 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after preparing the topological-density README
-sample media branch.
+Last updated on 2026-05-11 after starting README sample contract checks and
+the current roadmap snapshot.
+
+## Active note: 2026-05-11 README sample contract checks and roadmap snapshot
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/readme-sample-contracts`.
+- Starting point: PR #41 was merged into `main`.
+- Goal:
+  - add tests that the tracked README sample metadata sidecar matches the
+    accepted topological-density sample expectations;
+  - record the current progress estimate, concerns, and next-step ordering so
+    context compaction does not lose the project state.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `85%`;
+  - README/sample media path: about `90%`;
+  - physics-validation depth for topological charge density: about `70%`,
+    because true gauge-field instanton/SU(3)-embedded validation is still being
+    handled in the Gaugefields.jl-side work.
+- Done:
+  - magic-number defaults, metadata sidecars, Euclidean-slice framing, render
+    progress, camera orbit, mesh cache, action-density visual default, and
+    README sample replacement;
+  - topological charge-density observable, signed/volume renderers, style
+    tuning, real-configuration visual review, absolute-magnitude coloring, and
+    README topological sample;
+  - regression coverage for cold topological density, scalar SU(2)
+    instanton-like fixtures, and SU(2) Gaugefields.Oneinstanton scalar-Q
+    oracle consistency.
+- Main concerns:
+  - topological density is visually useful, but research-grade validation still
+    needs the separate true instanton gauge-field work to land;
+  - GLMakie rendering is still machine/display dependent, so durable artifact
+    paths and machine names must continue to be recorded;
+  - the package still has a large `create_animation` orchestration function,
+    so renderer/I/O separation remains a future maintainability task.
+- Next likely PRs, in order:
+  1. README sample contract checks and roadmap snapshot. This branch.
+  2. A small docs/API cleanup pass for the topological-density example and
+     sample generation commands.
+  3. Renderer/I/O separation around mesh geometry and plotting, keeping visual
+     output unchanged.
+  4. True instanton/SU(3)-embedded validation once the Gaugefields.jl-side work
+     is ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 226 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
+result: pass, 226 tests, render smoke skipped
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-11 topological-density README media replacement
 
