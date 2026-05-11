@@ -379,6 +379,58 @@ function record_animation_frames!(fig, ax, videoname, NT, camera, draw_slice!,
     return nothing
 end
 
+function animation_display_setup_for_gaugefield(U, NX, NY, NZ, NT, NC;
+    level_target=CURRENT_LEVEL_TARGET,
+    render_style=nothing,
+    raw_high_level_quantiles=nothing,
+    raw_high_color_quantiles=nothing,
+    topological_level_quantiles=nothing,
+    topological_color_quantile=nothing,
+    topological_style_preset=CURRENT_TOPOLOGICAL_CHARGE_STYLE_PRESET,
+    render_alpha=nothing,
+    render_transparency=nothing)
+
+    effective_render_style = something(render_style,
+        default_render_style_for_level_target(level_target))
+
+    if level_target == LEVEL_TARGET_ACTION_DENSITY_HIGH
+        effective_render_style == RENDER_STYLE_ACTION_DENSITY_BLOB ||
+            throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_ACTION_DENSITY_BLOB"))
+        action_density_t = local_action_density(U, NX, NY, NZ, NT, NC)
+        return (
+            display_setup=action_density_blob_display_setup(action_density_t),
+            render_style=effective_render_style,
+        )
+    elseif level_target == LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY
+        effective_render_style in (RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED,
+            RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME) ||
+            throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED or $RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME"))
+        density_t = topological_charge_density(U, NX, NY, NZ, NT, NC)
+        return (
+            display_setup=topological_charge_display_level_setup(density_t;
+                style_preset=topological_style_preset,
+                level_quantiles=topological_level_quantiles,
+                color_quantile=topological_color_quantile,
+                render_style=effective_render_style,
+                render_alpha=render_alpha,
+                render_transparency=render_transparency),
+            render_style=effective_render_style,
+        )
+    end
+
+    raw_plaqs_t = plaquette_plane_deviation(U, NX, NY, NZ, NT, NC)
+    return (
+        display_setup=plaquette_display_level_setup(raw_plaqs_t;
+            level_target=level_target,
+            raw_high_level_quantiles=raw_high_level_quantiles,
+            raw_high_color_quantiles=raw_high_color_quantiles,
+            render_style=effective_render_style,
+            render_alpha=render_alpha,
+            render_transparency=render_transparency),
+        render_style=effective_render_style,
+    )
+end
+
 function create_animation(NX, NY, NZ, NT, NC, videoname;
     beta=CURRENT_BETA_ANIMATION_DEFAULT,
     flow_steps_in=CURRENT_FLOW_STEPS_ANIMATION_DEFAULT,
@@ -420,38 +472,18 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         NC, Nwing, NX, NY, NZ, NT, condition=CURRENT_GENERATION_INITIAL_CONDITION)
     ildg = ILDG(filename)
     load_gaugefield!(U1, 1, ildg, [NX, NY, NZ, NT], NC)
-    effective_render_style = something(render_style,
-        default_render_style_for_level_target(level_target))
-
-    if level_target == LEVEL_TARGET_ACTION_DENSITY_HIGH
-        effective_render_style == RENDER_STYLE_ACTION_DENSITY_BLOB ||
-            throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_ACTION_DENSITY_BLOB"))
-        action_density_t = local_action_density(U1, NX, NY, NZ, NT, NC)
-        display_setup = action_density_blob_display_setup(action_density_t)
-    elseif level_target == LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY
-        effective_render_style in (RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED,
-            RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME) ||
-            throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED or $RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME"))
-        density_t = topological_charge_density(U1, NX, NY, NZ, NT, NC)
-        display_setup = topological_charge_display_level_setup(density_t;
-            style_preset=topological_style_preset,
-            level_quantiles=topological_level_quantiles,
-            color_quantile=topological_color_quantile,
-            render_style=effective_render_style,
-            render_alpha=render_alpha,
-            render_transparency=render_transparency)
-    else
-        # Calculating field strength using plaquette.
-        # In precise, we need 1/β.
-        raw_plaqs_t = plaquette_plane_deviation(U1, NX, NY, NZ, NT, NC)
-        display_setup = plaquette_display_level_setup(raw_plaqs_t;
-            level_target=level_target,
-            raw_high_level_quantiles=raw_high_level_quantiles,
-            raw_high_color_quantiles=raw_high_color_quantiles,
-            render_style=effective_render_style,
-            render_alpha=render_alpha,
-            render_transparency=render_transparency)
-    end
+    display_result = animation_display_setup_for_gaugefield(U1, NX, NY, NZ, NT, NC;
+        level_target=level_target,
+        render_style=render_style,
+        raw_high_level_quantiles=raw_high_level_quantiles,
+        raw_high_color_quantiles=raw_high_color_quantiles,
+        topological_level_quantiles=topological_level_quantiles,
+        topological_color_quantile=topological_color_quantile,
+        topological_style_preset=topological_style_preset,
+        render_alpha=render_alpha,
+        render_transparency=render_transparency)
+    display_setup = display_result.display_setup
+    effective_render_style = display_result.render_style
     plaqs_t = display_setup.display_field
     effective_theme = effective_render_theme(effective_render_style, render_theme)
     theme_settings = render_theme_settings(effective_theme)

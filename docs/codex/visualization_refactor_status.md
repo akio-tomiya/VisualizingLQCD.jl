@@ -4,7 +4,66 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after starting draw helper extraction.
+Last updated on 2026-05-11 after starting display setup extraction.
+
+## Active note: 2026-05-11 display setup extraction
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/extract-display-setup`.
+- Starting point:
+  - PR #46 was still open and mergeable at the start of this work;
+  - PR #46 was merged while validation was running;
+  - after user confirmation, this branch was rebased onto the updated `main`.
+- Goal:
+  - continue reducing `create_animation` while preserving output behavior;
+  - move observable/display setup selection out of the main orchestration body;
+  - keep gauge-field loading, figure setup, drawing, metadata assembly, and file
+    output unchanged for this PR.
+- Scope:
+  - `animation_display_setup_for_gaugefield` takes an already-loaded gauge field
+    and returns `(display_setup, render_style)`;
+  - action-density, topological charge-density, legacy neglog plaquette, and raw
+    plaquette display paths keep the same validation and setup calls as before;
+  - `create_animation` now performs I/O first, then delegates observable/display
+    setup to that helper.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `89%`;
+  - README/sample media path: about `90%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - `create_animation` still owns gauge-field I/O, figure setup, metadata
+    assembly, and metadata writing;
+  - `Pkg.test()` remains blocked by the existing `Qt6Base_jll` manifest vs
+    registry mismatch until the package environment is deliberately refreshed.
+- Next likely PRs, in order:
+  1. Separate gauge-field loading into an I/O helper.
+  2. Separate metadata assembly from movie recording.
+  3. Clean up user-facing example command structure.
+  4. True instanton/SU(3)-embedded validation once Gaugefields.jl-side work is
+     ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 273 tests, render smoke skipped
+
+direct create_animation smoke:
+result: pass, wrote:
+        /private/tmp/VisualizingLQCD-display-setup-smoke/smoke.mp4
+        /private/tmp/VisualizingLQCD-display-setup-smoke/smoke.metadata.json
+        metadata confirmed observable.kind=local_action_density,
+        render_style=action_density_blob, frame_count=16,
+        cached_slice_count=16
+
+git diff --check:
+result: pass
+```
 
 ## Active note: 2026-05-11 draw helper extraction
 
