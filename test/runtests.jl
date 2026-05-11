@@ -465,6 +465,10 @@ end
     @test coordinates.y_physical == (0.1, 0.5)
     @test all(isapprox.(coordinates.z_physical, (0.1, 0.6)))
     @test all(isapprox.(coordinates.axis_limits, (0, 0.4, 0, 0.5, 0, 0.6)))
+    draw_context = VisualizingLQCD.animation_draw_context()
+    @test draw_context.plot_obj[] === nothing
+    @test draw_context.current_slice4[] === nothing
+    @test isempty(draw_context.mesh_cache)
     @test VisualizingLQCD.action_density_blob_color(0.5; qmin=0.0, qmax=1.0) isa
           VisualizingLQCD.Vec3f
     positive_low_color = VisualizingLQCD.topological_charge_volume_magnitude_color(

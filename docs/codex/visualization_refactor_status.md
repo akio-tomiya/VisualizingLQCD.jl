@@ -4,7 +4,66 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after validating animation scene setup extraction.
+Last updated on 2026-05-11 after validating animation draw context extraction.
+
+## Active note: 2026-05-11 animation draw context extraction
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/extract-animation-draw-context`.
+- Starting point: PR #51 was merged into `main`.
+- Goal:
+  - continue reducing `create_animation` while preserving output behavior;
+  - move mutable draw state allocation into a helper before attempting any
+    larger draw-slice extraction;
+  - keep rendering, metadata contents, and output paths unchanged.
+- Scope:
+  - `animation_draw_context` owns the initial `plot_obj`, `current_slice4`, and
+    `mesh_cache` objects;
+  - `create_animation` still owns contour placeholder setup, the local
+    `draw_slice!` closure, and render orchestration;
+  - this PR intentionally does not change plotting semantics.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `94%`;
+  - README/sample media path: about `90%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - the remaining `draw_slice!` extraction would touch plot deletion,
+    contour/mesh dispatch, cache usage, and axis-limit reset together;
+  - the refactor may now be close to a good stopping point for `create_animation`
+    unless we need a stronger renderer abstraction immediately;
+  - `Pkg.test()` remains blocked by the existing `Qt6Base_jll` manifest vs
+    registry mismatch until the package environment is deliberately refreshed.
+- Next likely PRs, in order:
+  1. Clean up user-facing example command structure and README-adjacent usage.
+  2. If still useful, extract `draw_slice!` behind a very small renderer helper
+     with a direct smoke before/after.
+  3. Consider a deliberate package-environment refresh for `Pkg.test`.
+  4. True instanton/SU(3)-embedded validation once Gaugefields.jl-side work is
+     ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 295 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; ...'
+result: pass, direct create_animation smoke wrote:
+        /private/tmp/VisualizingLQCD-draw-context-smoke/smoke.mp4
+        /private/tmp/VisualizingLQCD-draw-context-smoke/smoke.metadata.json
+        metadata confirmed filename=/private/tmp/VisualizingLQCD-draw-context-smoke/smoke.ildg,
+        frame_mode=fixed_slice4, fixed_slice4=1,
+        observable.kind=local_action_density, render_style=action_density_blob,
+        frame_count=16, cached_slice_count=1, figure_size=[800, 800]
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-11 animation scene setup extraction
 

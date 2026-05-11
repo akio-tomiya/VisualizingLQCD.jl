@@ -387,6 +387,14 @@ function initialize_animation_scene(display_setup, theme_settings, camera;
     )
 end
 
+function animation_draw_context()
+    return (
+        plot_obj=Ref{Any}(nothing),
+        current_slice4=Ref{Union{Nothing,Int}}(nothing),
+        mesh_cache=Dict{Int,Any}(),
+    )
+end
+
 function record_animation_frames!(fig, ax, videoname, NT, camera, draw_slice!,
     current_slice4, render_plan)
 
@@ -618,9 +626,10 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     fig = scene.fig
     ax = scene.ax
 
-    plot_obj = Ref{Any}(nothing)
-    current_slice4 = Ref{Union{Nothing,Int}}(nothing)
-    mesh_cache = Dict{Int,Any}()
+    draw_context = animation_draw_context()
+    plot_obj = draw_context.plot_obj
+    current_slice4 = draw_context.current_slice4
+    mesh_cache = draw_context.mesh_cache
 
     if display_setup.render_kind == :contour
         dummy_data = zeros(Float64, NX, NY, NZ)
