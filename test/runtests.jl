@@ -812,6 +812,9 @@ end
     @test occursin("LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY", readme_text)
     @test occursin("RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME", readme_text)
     @test occursin("`abs(q)`", readme_text)
+    @test occursin("render_topological_density_config_movie.jl", readme_text)
+    @test occursin("--output-name $(SAMPLE_BASENAME).mp4", readme_text)
+    @test occursin("--show-axis-labels false", readme_text)
     @test occursin("$(SAMPLE_BASENAME).mp4.metadata.json", readme_text)
     @test !occursin("plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn",
         readme_text)

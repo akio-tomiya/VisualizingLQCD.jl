@@ -16,18 +16,20 @@ The fourth lattice direction is shown as a sequence of Euclidean slices; it is n
 # How to use
 
 This uses [Julia](https://julialang.org/).
-Please down load it from [here](https://julialang.org/downloads/).
+Please download it from [here](https://julialang.org/downloads/).
 
 ## Install
-In REPL, press ] key. 
+In the Julia REPL, press `]` to enter package mode:
+
 ```
 add VisualizingLQCD.jl
 ```
-If there are some problems, it might be better to use 
+
+For local development from a checkout, activate the repository environment:
+
 ```
 activate .
 ```
-This means you can use clean environment. 
 
 ## Visualization from an existing configuration
 
@@ -42,7 +44,7 @@ function main()
     NC = 3
 
     confname = "Conf$(NX)$(NY)$(NZ)$(NT)beta$(β).ildg"
-    videoname = "plaquette_3D_contour_animation$(NX)$(NY)$(NZ)$(NT)beta$(β).mp4"
+    videoname = "action_density_blob$(NX)$(NY)$(NZ)$(NT)beta$(β).mp4"
 
     # Default: local action-density blob visualization
     create_animation(NX, NY, NZ, NT, NC, videoname; beta=β, filename=confname)
@@ -73,6 +75,8 @@ upper-tail `|q|` quantiles `(0.94, 0.999)`, and the mesh color encodes local
 `abs(q)`: positive charge progresses from yellow/orange to red, while negative
 charge progresses from cyan to blue.
 
+For a direct Julia API call:
+
 ```julia
 topological_videoname = "topological_density_noaxis_halfspeed.mp4"
 
@@ -99,6 +103,32 @@ threshold quantiles, color method, and observable definition. For a contour
 version instead of filled volume meshes, use
 `render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED`.
 
+## Reproducing the bundled README sample
+
+The bundled README sample uses the topological charge-density volume renderer,
+the periodic fourth-direction sequence, and one camera turn. The reviewed input
+configuration is:
+
+```text
+/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+```
+
+The same sample can be regenerated with the repository helper script:
+
+```sh
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --output-name topological_density_noaxis_halfspeed.mp4 --render-mode volume --camera-motion orbit --frame-mode sequence --camera-orbit-turns 1 --nloops 4 --framerate 8 --figure-size 480 --show-axis-labels false --show-render-progress true --output-dir /private/tmp/VisualizingLQCD-topological-readme-sample
+```
+
+This command uses the direct API settings shown in the topological charge
+density example above.
+
+For the bundled `24^3 x 32` sample this gives `128` frames: all `32` Euclidean
+fourth-direction slices are shown four times while the camera completes one
+full turn. The source movie is rendered at `480 x 480`; the bundled README GIF
+is downsampled to `300` px to keep the repository size manageable. Axis labels
+are hidden in the bundled README movie to avoid label shimmer during the camera
+orbit; the 3D box and grid remain visible.
+
 To rotate the camera during the movie, use `camera_motion=:orbit`. Orbit movies
 keep one fourth-direction slice fixed by default, so the shape is not changed by
 the slice sequence while the camera rotates. It also uses `viewmode=:fit` and
@@ -121,34 +151,6 @@ To rotate while stepping through fourth-direction slices, pass
 `frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE`.
 Repeated action-density meshes are cached by slice by default; pass
 `cache_render_slices=false` to disable this.
-
-The bundled README sample uses the topological charge-density volume renderer,
-the periodic fourth-direction sequence, and one camera turn:
-
-```julia
-create_animation(
-    NX, NY, NZ, NT, NC, topological_videoname;
-    beta=β,
-    filename=confname,
-    level_target=VisualizingLQCD.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY,
-    render_style=VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME,
-    camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT,
-    frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE,
-    camera_orbit_turns=1,
-    nloops=4,
-    framerate=8,
-    figure_size=(480, 480),
-    show_axis_labels=false,
-    show_render_progress=true,
-)
-```
-
-For the bundled `24^3 x 32` sample this gives `128` frames: all `32` Euclidean
-fourth-direction slices are shown four times while the camera completes one
-full turn. The source movie is rendered at `480 x 480`; the bundled README GIF
-is downsampled to `300` px to keep the repository size manageable. Axis labels
-are hidden in the bundled README movie to avoid label shimmer during the camera
-orbit; the 3D box and grid remain visible.
 
 ## Visualization from scratch
 
