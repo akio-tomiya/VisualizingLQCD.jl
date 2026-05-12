@@ -4,7 +4,60 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-11 after validating animation draw context extraction.
+Last updated on 2026-05-12 after validating README example refresh.
+
+## Active note: 2026-05-12 README example refresh
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/refresh-readme-examples`.
+- Starting point: PR #52 was merged into `main`.
+- Goal:
+  - make the README examples easier to reproduce without changing runtime
+    behavior;
+  - separate the direct `create_animation` API example from the reviewed
+    script-based README sample reproduction path;
+  - keep tracked media and metadata artifacts unchanged.
+- Scope:
+  - README install and example text cleanup;
+  - explicit README sample reproduction command using
+    `scripts/topology_fixtures/render_topological_density_config_movie.jl`;
+  - topological-density sample command memo refresh;
+  - sample artifact contract checks updated for the script command.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `94%`;
+  - README/sample media path: about `92%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - README/sample reproduction is now clearer, but the large sample and true
+    instanton validation remain separate work streams;
+  - `Pkg.test()` remains blocked by the existing `Qt6Base_jll` manifest vs
+    registry mismatch until the package environment is deliberately refreshed;
+  - no GLMakie render smoke was run for this branch because it is docs/tests
+    only and does not change render code.
+- Next likely PRs, in order:
+  1. Consider a deliberate package-environment refresh for `Pkg.test`.
+  2. Decide whether to stop `create_animation` refactor here or extract
+     `draw_slice!` behind a small renderer helper.
+  3. Resume true instanton/SU(3)-embedded validation once Gaugefields.jl-side
+     work is ready.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 298 tests, render smoke skipped
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'include("scripts/topology_fixtures/render_topological_density_config_movie.jl"); @assert parse_bool("false", "--show-axis-labels") == false; @assert parse_bool("true", "--show-axis-labels") == true; println("movie helper syntax and parse smoke passed")'
+result: pass
+
+git diff --check
+result: pass
+```
 
 ## Active note: 2026-05-11 animation draw context extraction
 

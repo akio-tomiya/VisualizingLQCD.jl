@@ -1,6 +1,6 @@
 # Topological Density Sample Commands
 
-Last updated: 2026-05-11
+Last updated: 2026-05-12
 
 This memo records the reproducible command path for the reviewed
 topological-charge-density README sample. It is intentionally separate from
@@ -9,8 +9,8 @@ main status memo.
 
 ## Current Progress
 
-- User-facing visualization pipeline: about `85%`.
-- README/sample media path: about `90%`.
+- User-facing visualization pipeline: about `94%`.
+- README/sample media path: about `92%`.
 - Topological charge-density physics-validation depth: about `70%`.
 
 The main remaining physics validation item is a true gauge-field instanton or
@@ -63,17 +63,14 @@ Expected metadata:
 
 ## Validation
 
-Current branch: `codex/topological-sample-docs`.
+Current branch: `codex/refresh-readme-examples`.
 
 ```text
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 298 tests, render smoke skipped
+
 /Users/akio/.juliaup/bin/julia --project=. -e 'include("scripts/topology_fixtures/render_topological_density_config_movie.jl"); @assert parse_bool("false", "--show-axis-labels") == false; @assert parse_bool("true", "--show-axis-labels") == true; println("movie helper syntax and parse smoke passed")'
 result: pass
-
-/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
-result: pass, 218 tests, render smoke skipped
-
-/Users/akio/.juliaup/bin/julia --project=. -e 'using Pkg; Pkg.test()'
-result: pass, 218 tests, render smoke skipped
 
 git diff --check
 result: pass
@@ -81,10 +78,9 @@ result: pass
 
 ## Next Steps
 
-1. Finish PR #42, which locks the tracked README sample metadata contract.
-2. Keep this command path as the canonical topological-density README sample
+1. Keep this command path as the canonical topological-density README sample
    reproduction route.
-3. Next code-health work should separate renderer/I/O orchestration around
-   `create_animation` without changing rendered output.
-4. Resume true instanton validation once the Gaugefields.jl-side implementation
+2. Keep the README's direct API example and script-based reproduction command
+   in sync.
+3. Resume true instanton validation once the Gaugefields.jl-side implementation
    is ready.
