@@ -7,6 +7,7 @@ using Printf
 const RENDER_MODE_CONTOUR = :contour
 const RENDER_MODE_VOLUME = :volume
 const RENDER_MODE_BOTH = :both
+const RENDER_THEME_BOTH = :both
 
 function arg_value(args, name, default)
     flag = "--$name"
@@ -45,6 +46,17 @@ function parse_optional_float(raw)
     return parse(Float64, raw)
 end
 
+function parse_render_theme(raw)
+    if raw == "dark"
+        return VisualizingLQCD.RENDER_THEME_DARK
+    elseif raw == "light"
+        return VisualizingLQCD.RENDER_THEME_LIGHT
+    elseif raw == "both"
+        return RENDER_THEME_BOTH
+    end
+    throw(ArgumentError("--render-theme should be dark, light, or both"))
+end
+
 function parse_slice_spec(raw, density; auto_count)
     _, _, _, nt = size(density)
     if raw == "auto"
@@ -63,6 +75,12 @@ function render_modes(render_mode)
     return (render_mode,)
 end
 
+function render_themes(render_theme)
+    render_theme == RENDER_THEME_BOTH &&
+        return (VisualizingLQCD.RENDER_THEME_DARK, VisualizingLQCD.RENDER_THEME_LIGHT)
+    return (render_theme,)
+end
+
 function html_escape(value)
     text = string(value)
     text = replace(text, "&" => "&amp;")
@@ -76,27 +94,27 @@ function html_path_for(path, output_dir)
     return replace(relpath(path, output_dir), "\\" => "/")
 end
 
-function axis_kwargs(title)
+function axis_kwargs(title, theme_settings)
     return (
         xlabel="x [fm]",
         ylabel="y [fm]",
         zlabel="z [fm]",
         title=title,
         aspect=(1, 1, 1),
-        backgroundcolor=:black,
-        xlabelcolor=:white,
-        ylabelcolor=:white,
-        zlabelcolor=:white,
-        titlecolor=:white,
-        xticklabelcolor=:white,
-        yticklabelcolor=:white,
-        zticklabelcolor=:white,
-        xtickcolor=:white,
-        ytickcolor=:white,
-        ztickcolor=:white,
-        xgridcolor=:gray,
-        ygridcolor=:gray,
-        zgridcolor=:gray,
+        backgroundcolor=theme_settings.axis_background,
+        xlabelcolor=theme_settings.text_color,
+        ylabelcolor=theme_settings.text_color,
+        zlabelcolor=theme_settings.text_color,
+        titlecolor=theme_settings.text_color,
+        xticklabelcolor=theme_settings.text_color,
+        yticklabelcolor=theme_settings.text_color,
+        zticklabelcolor=theme_settings.text_color,
+        xtickcolor=theme_settings.text_color,
+        ytickcolor=theme_settings.text_color,
+        ztickcolor=theme_settings.text_color,
+        xgridcolor=theme_settings.grid_color,
+        ygridcolor=theme_settings.grid_color,
+        zgridcolor=theme_settings.grid_color,
         azimuth=VisualizingLQCD.CURRENT_CAMERA_AZIMUTH,
         elevation=VisualizingLQCD.CURRENT_CAMERA_ELEVATION,
         perspectiveness=VisualizingLQCD.CURRENT_CAMERA_MESH_PERSPECTIVENESS,
@@ -126,7 +144,7 @@ function render_contour_slice!(ax, data, setup, x_range, y_range, z_range)
     return objects
 end
 
-function render_review_item(density, slice4, mode, output_dir, options)
+function render_review_item(density, slice4, mode, render_theme, output_dir, options)
     nx, ny, nz, _ = size(density)
     a = VisualizingLQCD.calculate_a(options.beta)
     x_range = (a, a * nx)
@@ -134,12 +152,17 @@ function render_review_item(density, slice4, mode, output_dir, options)
     z_range = (a, a * nz)
     setup = setup_for_mode(density, mode, options)
     data = @view density[:, :, :, slice4]
-    suffix = "$(String(mode))-slice$(slice4)"
+    suffix = "$(String(render_theme))-$(String(mode))-slice$(slice4)"
     png_path = joinpath(output_dir, "$suffix.png")
+    theme_settings = VisualizingLQCD.render_theme_settings(render_theme)
 
     @printf("rendering %-8s slice4=%d levels=%d\n", String(mode), slice4, length(setup.levels))
-    fig = Figure(size=(options.figure_size, options.figure_size), backgroundcolor=:black)
-    ax = Axis3(fig[1, 1]; axis_kwargs("$(String(mode)) / slice4=$slice4")...)
+    fig = Figure(
+        size=(options.figure_size, options.figure_size),
+        backgroundcolor=theme_settings.figure_background)
+    ax = Axis3(fig[1, 1];
+        axis_kwargs("$(String(render_theme)) / $(String(mode)) / slice4=$slice4",
+            theme_settings)...)
     limits!(ax, 0, a * nx, 0, a * ny, 0, a * nz)
     volume_info = nothing
     if mode == RENDER_MODE_VOLUME
@@ -151,7 +174,7 @@ function render_review_item(density, slice4, mode, output_dir, options)
     end
     save(png_path, fig)
     return (
-        label="$(String(mode)) / slice4=$slice4",
+        label="$(String(render_theme)) / $(String(mode)) / slice4=$slice4",
         mode=String(mode),
         slice4=slice4,
         png=png_path,
@@ -369,6 +392,7 @@ function main(args=ARGS)
         output_dir=arg_value(args, "output-dir", "/private/tmp/VisualizingLQCD-topological-config-review"),
         render_mode=parse_render_mode(arg_value(args, "render-mode", "both")),
         style_preset=parse_style_preset(arg_value(args, "style-preset", "balanced")),
+        render_theme=parse_render_theme(arg_value(args, "render-theme", "dark")),
         level_quantiles=parse_optional_quantiles(arg_value(args, "level-quantiles", ""),
             "--level-quantiles"),
         color_quantile=parse_optional_float(arg_value(args, "color-quantile", "")),
@@ -382,9 +406,10 @@ function main(args=ARGS)
     density = load_topological_density(options)
     slices = parse_slice_spec(options.slice4, density; auto_count=options.auto_slices)
     modes = render_modes(options.render_mode)
+    themes = render_themes(options.render_theme)
     results = [
-        render_review_item(density, slice4, mode, options.output_dir, options)
-        for slice4 in slices for mode in modes
+        render_review_item(density, slice4, mode, render_theme, options.output_dir, options)
+        for slice4 in slices for mode in modes for render_theme in themes
     ]
     metadata = Dict(
         "input" => options.input,
@@ -393,6 +418,8 @@ function main(args=ARGS)
         "beta" => options.beta,
         "render_mode" => String(options.render_mode),
         "style_preset" => String(options.style_preset),
+        "render_theme" => String(options.render_theme),
+        "rendered_themes" => [String(theme) for theme in themes],
         "slice4" => options.slice4,
         "selected_slices" => slices,
         "level_quantiles_override" => options.level_quantiles === nothing ?

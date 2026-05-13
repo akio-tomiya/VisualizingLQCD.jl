@@ -383,6 +383,11 @@ end
 
     @test VisualizingLQCD.render_theme_metadata(
         VisualizingLQCD.RENDER_THEME_DARK)["render_theme"] == "dark"
+    @test VisualizingLQCD.render_theme_metadata(
+        VisualizingLQCD.RENDER_THEME_LIGHT)["figure_background"] == "white"
+    @test VisualizingLQCD.effective_render_theme(
+        VisualizingLQCD.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME,
+        VisualizingLQCD.RENDER_THEME_LIGHT) == VisualizingLQCD.RENDER_THEME_LIGHT
     thermal_setup = VisualizingLQCD.plaquette_display_level_setup(
         [1.0, 4.0, 2.0, 3.0];
         level_target=VisualizingLQCD.LEVEL_TARGET_RAW_HIGH,

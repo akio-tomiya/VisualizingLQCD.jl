@@ -4,7 +4,99 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-12 after validating README example refresh.
+Last updated on 2026-05-13 after user accepted light theme visual candidates.
+
+## Active note: 2026-05-13 light theme visual candidates
+
+- Machine: `Akios-MacBook-Air.local`.
+- Workdir:
+
+```text
+/Users/akio/repository/VisualizingLQCD_v2/VisualizingLQCD.jl
+```
+
+- Branch: `codex/light-theme-visual-candidates`.
+- Starting point: PR #53 was merged into `main`.
+- Goal:
+  - make white-background visual review reproducible;
+  - keep existing dark-theme defaults unchanged;
+  - add script-level `--render-theme light|dark` for movies and
+    `--render-theme dark|light|both` for still review pages.
+- Scope so far:
+  - `render_topological_density_config_movie.jl` accepts `--render-theme` and
+    passes it to `create_animation`;
+  - `render_topological_density_config_review.jl` accepts `--render-theme both`
+    so dark/light stills can be compared in one visual-review page;
+  - `scripts/topology_fixtures/README.md` records the light-theme review command;
+  - package tests cover explicit light-theme metadata and override behavior.
+- Review artifacts:
+
+```text
+topological still review scratch:
+  /private/tmp/VisualizingLQCD-light-theme-review-20260513/topological-both/view.html
+topological still review durable:
+  /Users/akio/Downloads/VisualizingLQCD-light-theme-review-20260513/topological-both/view.html
+topological input:
+  /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+topological command:
+  /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_review.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --render-theme both --slice4 6,5,28,27 --figure-size 560 --output-dir /private/tmp/VisualizingLQCD-light-theme-review-20260513/topological-both
+
+action-density light movie scratch:
+  /private/tmp/VisualizingLQCD-light-theme-review-20260513/action-density-light/view.html
+action-density light movie durable:
+  /Users/akio/Downloads/VisualizingLQCD-light-theme-review-20260513/action-density-light/view.html
+action-density input:
+  /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg
+action-density command:
+  /Users/akio/.juliaup/bin/julia --project=. -e 'using VisualizingLQCD; out="/private/tmp/VisualizingLQCD-light-theme-review-20260513/action-density-light"; mkpath(out); conf="/Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg"; video=joinpath(out,"action_density_light_orbit_sequence.mp4"); metadata=string(video,".metadata.json"); result=create_animation(24,24,24,32,3,video; beta=6.0, filename=conf, metadata_filename=metadata, render_theme=VisualizingLQCD.RENDER_THEME_LIGHT, camera_motion=VisualizingLQCD.CAMERA_MOTION_ORBIT, frame_mode=VisualizingLQCD.FRAME_MODE_SEQUENCE, camera_orbit_turns=1, nloops=1, framerate=8, figure_size=(480,480), show_axis_labels=false, show_render_progress=true); ...'
+```
+
+- Current visual impression:
+  - white-background topological-density volume rendering works technically and
+    is legible;
+  - black-background version still has stronger contrast;
+  - on white, low positive yellow regions are a little less distinct, so a
+    future light-specific positive palette may help if the user prefers this
+    direction.
+  - white-background action-density movie was generated as a short 32-frame
+    review candidate; metadata confirms `render_theme=light`,
+    `frame_count=32`, and `cached_slice_count=32`.
+  - User visual review on 2026-05-13: "良さそう"; keep this first light-theme
+    support PR as-is and mark the draft PR ready.
+- Current progress estimate:
+  - visualization refactor/user-facing pipeline: about `94%`;
+  - README/sample media path: about `92%`;
+  - light-theme polish: about `60%`;
+  - physics-validation depth for topological charge density: about `70%`.
+- Main concerns:
+  - the first light-theme change is plumbing plus review artifacts, not a
+    dedicated light-specific color palette;
+  - action-density and topological-density light outputs are visually acceptable
+    as first candidates, but future palette tuning may still improve white-slide
+    contrast;
+  - `Pkg.test()` remains blocked by the existing `Qt6Base_jll` manifest vs
+    registry mismatch until the package environment is deliberately refreshed.
+- Next likely steps:
+  1. Mark PR #54 ready and merge after review.
+  2. If contrast is later judged weak, test a light-specific positive palette with deeper
+     orange/red lows instead of yellow.
+  3. Consider a longer README/sample-style light-theme movie only if a user-facing
+     white-background sample is needed.
+- Validation:
+
+```text
+/Users/akio/.juliaup/bin/julia --project=. -e 'include("scripts/topology_fixtures/render_topological_density_config_review.jl"); @assert parse_render_theme("both") == RENDER_THEME_BOTH; @assert render_themes(RENDER_THEME_BOTH) == (VisualizingLQCD.RENDER_THEME_DARK, VisualizingLQCD.RENDER_THEME_LIGHT); println("review render-theme both parser smoke passed")'
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. -e 'include("scripts/topology_fixtures/render_topological_density_config_movie.jl"); @assert parse_render_theme("light") == VisualizingLQCD.RENDER_THEME_LIGHT; println("movie render-theme parser smoke passed")'
+result: pass
+
+git diff --check
+result: pass
+
+/Users/akio/.juliaup/bin/julia --project=. test/runtests.jl
+result: pass, 300 tests, render smoke skipped
+```
 
 ## Active note: 2026-05-12 README example refresh
 
