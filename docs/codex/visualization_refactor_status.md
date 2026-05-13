@@ -4,7 +4,7 @@ This memo tracks the VisualizingLQCD.jl visualization refactor outside the
 `docs/codex/visualization_refactor_v7/` reference directory. Do not edit the v7
 reference materials for status updates.
 
-Last updated on 2026-05-13 after starting light theme visual candidates.
+Last updated on 2026-05-13 after user accepted light theme visual candidates.
 
 ## Active note: 2026-05-13 light theme visual candidates
 
@@ -61,24 +61,27 @@ action-density command:
   - white-background action-density movie was generated as a short 32-frame
     review candidate; metadata confirms `render_theme=light`,
     `frame_count=32`, and `cached_slice_count=32`.
+  - User visual review on 2026-05-13: "良さそう"; keep this first light-theme
+    support PR as-is and mark the draft PR ready.
 - Current progress estimate:
   - visualization refactor/user-facing pipeline: about `94%`;
   - README/sample media path: about `92%`;
-  - light-theme polish: about `45%`;
+  - light-theme polish: about `60%`;
   - physics-validation depth for topological charge density: about `70%`.
 - Main concerns:
-  - the first light-theme change is only plumbing plus review artifacts; it does
-    not yet add a light-specific color palette;
-  - action-density light-theme candidates still need a separate check if the
-    user wants white-background action-density movies too;
+  - the first light-theme change is plumbing plus review artifacts, not a
+    dedicated light-specific color palette;
+  - action-density and topological-density light outputs are visually acceptable
+    as first candidates, but future palette tuning may still improve white-slide
+    contrast;
   - `Pkg.test()` remains blocked by the existing `Qt6Base_jll` manifest vs
     registry mismatch until the package environment is deliberately refreshed.
 - Next likely steps:
-  1. Ask the user to review the durable `topological-both/view.html` page.
-  2. If accepted, render a short light-theme topological movie candidate.
-  3. If contrast is weak, test a light-specific positive palette with deeper
+  1. Mark PR #54 ready and merge after review.
+  2. If contrast is later judged weak, test a light-specific positive palette with deeper
      orange/red lows instead of yellow.
-  4. Repeat the same dark/light review for action-density blobs if needed.
+  3. Consider a longer README/sample-style light-theme movie only if a user-facing
+     white-background sample is needed.
 - Validation:
 
 ```text
