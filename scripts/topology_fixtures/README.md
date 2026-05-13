@@ -27,6 +27,9 @@ It is a thin wrapper around `VisualizingLQCD.create_animation`, intended for
 small reviewed movie runs after the still-review page looks reasonable.
 Use `--show-axis-labels false` for README-style orbit movies; it keeps the grid
 and 3D box but avoids axis-label shimmer during rotation.
+Use `--render-theme light` to render the same scene on a white background, or
+`--render-theme both` in the still-review script to compare dark and light
+themes in one review page.
 
 For volume rendering, the current reviewed baseline uses a `q0.940` lower
 `|q|` body threshold and colors each sign by local `abs(q)`: positive charge is
@@ -62,6 +65,8 @@ Run from the repository root:
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_su2_instanton_fixture_smoke.jl --case-set debug --style-preset all --render-mode volume --no-movie --output-dir /private/tmp/VisualizingLQCD-su2-instanton-fixtures-volume-review
 
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_review.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode both --slice4 auto --auto-slices 4 --output-dir /private/tmp/VisualizingLQCD-topological-config-review
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_review.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --render-theme both --slice4 auto --auto-slices 4 --output-dir /private/tmp/VisualizingLQCD-topological-light-theme-review
 
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --camera-motion orbit --frame-mode sequence --nloops 2 --framerate 8 --figure-size 480 --show-render-progress true --output-dir /private/tmp/VisualizingLQCD-topological-config-movie-review
 ```

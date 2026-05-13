@@ -89,6 +89,15 @@ function parse_camera_motion(raw)
     throw(ArgumentError("--camera-motion should be orbit or static"))
 end
 
+function parse_render_theme(raw)
+    if raw == "dark"
+        return VisualizingLQCD.RENDER_THEME_DARK
+    elseif raw == "light"
+        return VisualizingLQCD.RENDER_THEME_LIGHT
+    end
+    throw(ArgumentError("--render-theme should be dark or light"))
+end
+
 function html_escape(value)
     text = string(value)
     text = replace(text, "&" => "&amp;")
@@ -125,7 +134,7 @@ function render_movie(mode, options)
         topological_style_preset=options.style_preset,
         render_style=render_style_for_mode(mode),
         render_alpha=options.render_alpha,
-        render_theme=VisualizingLQCD.RENDER_THEME_DARK,
+        render_theme=options.render_theme,
         cache_render_slices=options.cache_render_slices,
         figure_size=(options.figure_size, options.figure_size),
         framerate=options.framerate,
@@ -153,6 +162,7 @@ function options_summary_text(options)
         "lattice_size = $((options.nx, options.ny, options.nz, options.nt))",
         "render_mode = $(String(options.render_mode))",
         "style_preset = $(String(options.style_preset))",
+        "render_theme = $(String(options.render_theme))",
         "frame_mode = $(String(options.frame_mode))",
         "camera_motion = $(String(options.camera_motion))",
         "show_axis_labels = $(options.show_axis_labels)",
@@ -359,6 +369,7 @@ function main(args=ARGS)
             "--level-quantiles"),
         color_quantile=parse_optional_float(arg_value(args, "color-quantile", "")),
         render_alpha=parse_optional_float(arg_value(args, "alpha", "")),
+        render_theme=parse_render_theme(arg_value(args, "render-theme", "dark")),
         figure_size=parse(Int, arg_value(args, "figure-size", "560")),
         framerate=parse_optional_int(arg_value(args, "framerate", "")),
         nloops=parse_optional_int(arg_value(args, "nloops", "")),
