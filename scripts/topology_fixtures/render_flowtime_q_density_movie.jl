@@ -20,6 +20,9 @@ const LEVEL_STRATEGY_GLOBAL_QUANTILE = :global_quantile
 const LEVEL_STRATEGY_FIXED_NORMALIZED = :fixed_normalized
 const LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION = :positive_charge_fraction
 
+const VISIBILITY_GATE_NONE = :none
+const VISIBILITY_GATE_TOPOLOGICAL_SECTOR = :topological_sector
+
 const DEFAULT_INPUT_DIR =
     "/Users/akio/repository/gaugefields_instanton_radius/results/yitp_action_scan_tau50_20260513/su2_wilson_long_flow_tau50_20260513/R3p00/q_density"
 
@@ -106,6 +109,17 @@ function effective_level_strategy(options)
     options.level_strategy != LEVEL_STRATEGY_AUTO && return options.level_strategy
     return options.display_normalization == DISPLAY_NORMALIZATION_RAW ?
            LEVEL_STRATEGY_GLOBAL_QUANTILE : LEVEL_STRATEGY_FIXED_NORMALIZED
+end
+
+function parse_visibility_gate(raw)
+    normalized = replace(lowercase(raw), "-" => "_")
+    gate = Symbol(normalized)
+    gate in (
+        VISIBILITY_GATE_NONE,
+        VISIBILITY_GATE_TOPOLOGICAL_SECTOR,
+    ) || throw(ArgumentError(
+        "--visibility-gate should be none or topological-sector"))
+    return gate
 end
 
 function parse_style_preset(raw)
@@ -331,6 +345,27 @@ function charge_fraction_alpha(sample, options, reference_positive_slice_charge)
     return clamp(charge / reference_positive_slice_charge, 0.0, 1.0)
 end
 
+function visibility_gate_summary(sample, options)
+    if options.visibility_gate == VISIBILITY_GATE_NONE
+        return Dict(
+            "mode" => String(VISIBILITY_GATE_NONE),
+            "active" => true,
+        )
+    elseif options.visibility_gate == VISIBILITY_GATE_TOPOLOGICAL_SECTOR
+        distance = abs(sample.q_total - options.target_topological_charge)
+        active = distance < 0.5
+        return Dict(
+            "mode" => String(VISIBILITY_GATE_TOPOLOGICAL_SECTOR),
+            "active" => active,
+            "target_topological_charge" => options.target_topological_charge,
+            "sector_distance" => distance,
+            "sector_radius" => 0.5,
+            "note" => "active means Q_tot is closer to the target topological sector than to its neighboring integer sector",
+        )
+    end
+    throw(ArgumentError("unsupported visibility gate: $(options.visibility_gate)"))
+end
+
 function positive_charge_fraction_level_setup(base_setup, data, sample, options,
     reference_positive_slice_charge)
     effective_level_strategy(options) == LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION ||
@@ -339,13 +374,17 @@ function positive_charge_fraction_level_setup(base_setup, data, sample, options,
         base_setup.mesh_renderer == :topological_charge_volume ||
         return base_setup
 
-    threshold_info = charge_fraction_threshold(data, options.charge_fraction)
+    gate = visibility_gate_summary(sample, options)
+    threshold_info = gate["active"] ?
+                     charge_fraction_threshold(data, options.charge_fraction) :
+                     nothing
     alpha = something(charge_fraction_alpha(sample, options, reference_positive_slice_charge),
         base_setup.alpha)
     render_style_info = merge(Dict(base_setup.render_style_info), Dict(
         "level_strategy" => String(LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION),
         "charge_fraction" => options.charge_fraction,
         "charge_fraction_fade" => options.charge_fraction_fade,
+        "visibility_gate" => gate,
         "positive_slice_charge" => positive_slice_charge(sample.q, options.fixed_slice4),
         "reference_positive_slice_charge" => reference_positive_slice_charge,
         "alpha" => alpha,
@@ -364,7 +403,10 @@ function positive_charge_fraction_level_setup(base_setup, data, sample, options,
                 "method" => "positive_charge_fraction_highest_density_region",
                 "charge_fraction" => options.charge_fraction,
                 "active" => false,
-                "note" => "no positive density on the displayed slice",
+                "visibility_gate" => gate,
+                "note" => gate["active"] ?
+                          "no positive density on the displayed slice" :
+                          "visibility gate is inactive for this frame",
             ),
             render_style_info=merge(render_style_info, Dict("active" => false)),
         ))
@@ -375,6 +417,7 @@ function positive_charge_fraction_level_setup(base_setup, data, sample, options,
         "method" => "positive_charge_fraction_highest_density_region",
         "charge_fraction" => options.charge_fraction,
         "active" => true,
+        "visibility_gate" => gate,
         "positive_body_level" => threshold,
         "positive_color_ceiling" => ceiling,
         "total_positive_slice_charge" => threshold_info.total_positive,
@@ -400,18 +443,22 @@ function sample_level_summary(sample, options, reference_peak, reference_positiv
     strategy = effective_level_strategy(options)
     strategy != LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION &&
         return Dict("level_strategy" => String(strategy))
+    gate = visibility_gate_summary(sample, options)
     q_display = display_q_density(sample, options, reference_peak)
     data = @view q_display[:, :, :, options.fixed_slice4]
-    threshold_info = charge_fraction_threshold(data, options.charge_fraction)
+    threshold_info = gate["active"] ?
+                     charge_fraction_threshold(data, options.charge_fraction) :
+                     nothing
     raw_positive_charge = positive_slice_charge(sample.q, options.fixed_slice4)
     alpha = charge_fraction_alpha(sample, options, reference_positive_slice_charge)
     summary = Dict{String,Any}(
         "level_strategy" => String(strategy),
         "charge_fraction" => options.charge_fraction,
+        "visibility_gate" => gate,
         "positive_slice_charge" => raw_positive_charge,
         "reference_positive_slice_charge" => reference_positive_slice_charge,
         "charge_fraction_alpha" => alpha,
-        "active" => threshold_info !== nothing,
+        "active" => gate["active"] && threshold_info !== nothing,
     )
     threshold_info === nothing && return summary
     summary["positive_body_level"] = threshold_info.threshold
@@ -636,6 +683,8 @@ function render_movie(mode, samples, options)
             "charge_fraction" => options.charge_fraction,
             "charge_fraction_fade" => options.charge_fraction_fade,
             "reference_positive_slice_charge" => reference_positive_slice_charge,
+            "visibility_gate" => String(options.visibility_gate),
+            "target_topological_charge" => options.target_topological_charge,
         ),
         "frame_map" => flowtime_frame_map(samples, options.frame_hold),
         "sample_summary" => [Dict(
@@ -702,6 +751,7 @@ function write_review_html(output_dir, results, options)
         "render_mode = $(String(options.render_mode))",
         "display_normalization = $(String(options.display_normalization))",
         "level_strategy = $(String(effective_level_strategy(options)))",
+        "visibility_gate = $(String(options.visibility_gate))",
         "frame direction = gradient flow time t/a^2",
         "source tau metadata is interpreted as t/a^2",
     ), "\n"))
@@ -778,6 +828,9 @@ function main(args=ARGS)
         charge_fraction=parse(Float64, arg_value(args, "charge-fraction", "0.50")),
         charge_fraction_fade=parse_bool(arg_value(args, "charge-fraction-fade", "true"),
             "--charge-fraction-fade"),
+        visibility_gate=parse_visibility_gate(arg_value(args, "visibility-gate", "none")),
+        target_topological_charge=parse(Float64, arg_value(args,
+            "target-topological-charge", "1.0")),
         normalization_floor_fraction=parse(Float64, arg_value(args,
             "normalization-floor-fraction", "1.0e-3")),
         normalization_abs_floor=parse(Float64, arg_value(args,
