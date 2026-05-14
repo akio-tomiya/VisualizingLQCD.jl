@@ -11,6 +11,10 @@ const RENDER_MODE_CONTOUR = :contour
 const RENDER_MODE_VOLUME = :volume
 const RENDER_MODE_BOTH = :both
 
+const DISPLAY_NORMALIZATION_RAW = :raw
+const DISPLAY_NORMALIZATION_PER_FRAME_PEAK = :per_frame_peak
+const DISPLAY_NORMALIZATION_PER_FRAME_ABSMAX = :per_frame_absmax
+
 const DEFAULT_INPUT_DIR =
     "/Users/akio/repository/gaugefields_instanton_radius/results/yitp_action_scan_tau50_20260513/su2_wilson_long_flow_tau50_20260513/R3p00/q_density"
 
@@ -66,6 +70,18 @@ function parse_camera_motion(raw)
         return VisualizingLQCD.CAMERA_MOTION_STATIC
     end
     throw(ArgumentError("--camera-motion should be orbit or static"))
+end
+
+function parse_display_normalization(raw)
+    normalized = replace(lowercase(raw), "-" => "_")
+    mode = Symbol(normalized)
+    mode in (
+        DISPLAY_NORMALIZATION_RAW,
+        DISPLAY_NORMALIZATION_PER_FRAME_PEAK,
+        DISPLAY_NORMALIZATION_PER_FRAME_ABSMAX,
+    ) || throw(ArgumentError(
+        "--display-normalization should be raw, per-frame-peak, or per-frame-absmax"))
+    return mode
 end
 
 function parse_style_preset(raw)
@@ -132,8 +148,9 @@ function inferred_flow_action_label(samples)
     return length(labels) == 1 ? labels[1] : ""
 end
 
-function flow_movie_title(sample, fixed_slice4, action_label)
-    prefix = isempty(action_label) ? "q_lat flow-time movie" : "q_lat $(action_label) flow"
+function flow_movie_title(sample, fixed_slice4, action_label, display_normalization)
+    observable = display_normalization == DISPLAY_NORMALIZATION_RAW ? "q_lat" : "q_lat/q_max"
+    prefix = isempty(action_label) ? "$observable flow-time movie" : "$observable $(action_label) flow"
     return @sprintf("%s: t/a^2 = %.4g, fixed slice4 = %d, Q = %.6g",
         prefix, sample.tau, fixed_slice4, sample.q_total)
 end
@@ -187,24 +204,124 @@ function select_samples(samples, tau_values; stride, tolerance)
     return selected
 end
 
-function density_stack(samples)
+function normalization_peak(sample, display_normalization)
+    display_normalization == DISPLAY_NORMALIZATION_RAW && return 1.0
+    display_normalization == DISPLAY_NORMALIZATION_PER_FRAME_PEAK &&
+        return maximum(sample.q)
+    display_normalization == DISPLAY_NORMALIZATION_PER_FRAME_ABSMAX &&
+        return maximum(abs, sample.q)
+    throw(ArgumentError("unsupported display normalization: $display_normalization"))
+end
+
+function reference_normalization_peak(samples, display_normalization)
+    display_normalization == DISPLAY_NORMALIZATION_RAW && return 1.0
+    return normalization_peak(first(samples), display_normalization)
+end
+
+function normalization_floor(reference_peak, options)
+    options.display_normalization == DISPLAY_NORMALIZATION_RAW && return 0.0
+    return max(options.normalization_abs_floor,
+        options.normalization_floor_fraction * max(abs(reference_peak), eps(Float64)))
+end
+
+function display_q_density(sample, options, reference_peak)
+    options.display_normalization == DISPLAY_NORMALIZATION_RAW && return sample.q
+    peak = normalization_peak(sample, options.display_normalization)
+    floor = normalization_floor(reference_peak, options)
+    if !(isfinite(peak)) || abs(peak) <= floor
+        return zeros(Float64, size(sample.q))
+    end
+    return sample.q ./ peak
+end
+
+function display_sample_summary(sample, options, reference_peak)
+    peak = normalization_peak(sample, options.display_normalization)
+    floor = normalization_floor(reference_peak, options)
+    active = options.display_normalization == DISPLAY_NORMALIZATION_RAW ||
+             (isfinite(peak) && abs(peak) > floor)
+    scale = active && options.display_normalization != DISPLAY_NORMALIZATION_RAW ? peak : 1.0
+    display_abs_maximum = if options.display_normalization == DISPLAY_NORMALIZATION_RAW
+        sample.q_abs_maximum
+    elseif active
+        maximum(abs, sample.q ./ scale)
+    else
+        0.0
+    end
+    return Dict(
+        "display_normalization" => String(options.display_normalization),
+        "normalization_peak" => peak,
+        "normalization_floor" => floor,
+        "display_active" => active,
+        "display_scale" => scale,
+        "display_abs_maximum" => display_abs_maximum,
+    )
+end
+
+function density_stack(samples, options, reference_peak)
     nx, ny, nz, nt = size(samples[1].q)
     stack = Array{Float64}(undef, nx, ny, nz, nt, length(samples))
     for (i, sample) in enumerate(samples)
         size(sample.q) == (nx, ny, nz, nt) ||
             throw(ArgumentError("all q densities should have the same lattice size"))
-        stack[:, :, :, :, i] .= sample.q
+        stack[:, :, :, :, i] .= display_q_density(sample, options, reference_peak)
     end
     return stack
 end
 
-function setup_for_mode(samples, mode, options)
-    return VisualizingLQCD.topological_charge_display_level_setup(density_stack(samples);
+function fixed_normalized_level_setup(setup, options)
+    options.display_normalization == DISPLAY_NORMALIZATION_RAW && return setup
+    is_topological_volume = (:mesh_renderer in keys(setup)) &&
+                            setup.mesh_renderer == :topological_charge_volume
+    is_topological_volume || return setup
+    0 < options.normalized_body_level < options.normalized_color_ceiling ||
+        throw(ArgumentError("--normalized-body-level should be positive and smaller than --normalized-color-ceiling"))
+    levels = (
+        -options.normalized_color_ceiling,
+        -options.normalized_body_level,
+        options.normalized_body_level,
+        options.normalized_color_ceiling,
+    )
+    level_selection_info = Dict(
+        "method" => "fixed_normalized_q_over_qmax_superlevel",
+        "display_normalization" => String(options.display_normalization),
+        "positive_body_level" => options.normalized_body_level,
+        "negative_body_level" => options.normalized_body_level,
+        "positive_color_ceiling" => options.normalized_color_ceiling,
+        "negative_color_ceiling" => options.normalized_color_ceiling,
+        "note" => "levels are in displayed q/q_max units, not raw q_lat units",
+    )
+    render_style_info = merge(Dict(setup.render_style_info),
+        Dict(
+            "display_normalization" => String(options.display_normalization),
+            "normalized_body_level" => options.normalized_body_level,
+            "normalized_color_ceiling" => options.normalized_color_ceiling,
+            "positive_body_level" => options.normalized_body_level,
+            "negative_body_level" => options.normalized_body_level,
+            "positive_color_range" => (
+                options.normalized_body_level, options.normalized_color_ceiling),
+            "negative_color_range" => (
+                options.normalized_body_level, options.normalized_color_ceiling),
+        ))
+    return merge(setup, (
+        levels=levels,
+        positive_body_level=options.normalized_body_level,
+        negative_body_level=options.normalized_body_level,
+        positive_color_range=(options.normalized_body_level, options.normalized_color_ceiling),
+        negative_color_range=(options.normalized_body_level, options.normalized_color_ceiling),
+        level_selection_info=level_selection_info,
+        render_style_info=render_style_info,
+    ))
+end
+
+function setup_for_mode(samples, mode, options, reference_peak)
+    setup = VisualizingLQCD.topological_charge_display_level_setup(
+        density_stack(samples, options, reference_peak);
         style_preset=options.style_preset,
         level_quantiles=options.level_quantiles,
         color_quantile=options.color_quantile,
         render_style=render_style_for_mode(mode),
         render_alpha=options.render_alpha)
+    return fixed_normalized_level_setup(setup, options)
 end
 
 function axis_kwargs(title, setup, theme_settings, camera, options)
@@ -261,7 +378,8 @@ function flowtime_frame_map(samples, frame_hold)
 end
 
 function render_movie(mode, samples, options)
-    setup = setup_for_mode(samples, mode, options)
+    reference_peak = reference_normalization_peak(samples, options.display_normalization)
+    setup = setup_for_mode(samples, mode, options, reference_peak)
     nx, ny, nz, nt = size(samples[1].q)
     1 <= options.fixed_slice4 <= nt ||
         throw(ArgumentError("--fixed-slice4 should be in 1:$nt"))
@@ -279,7 +397,8 @@ function render_movie(mode, samples, options)
     fig = Figure(
         size=(options.figure_size, options.figure_size),
         backgroundcolor=theme_settings.figure_background)
-    title = flow_movie_title(samples[1], options.fixed_slice4, action_label)
+    title = flow_movie_title(samples[1], options.fixed_slice4, action_label,
+        options.display_normalization)
     ax = Axis3(fig[1, 1]; axis_kwargs(title, setup, theme_settings, camera, options)...)
     limits!(ax, 0, options.a * nx, 0, options.a * ny, 0, options.a * nz)
 
@@ -291,8 +410,10 @@ function render_movie(mode, samples, options)
 
     function draw_sample!(sample)
         VisualizingLQCD.delete_plot_obj!(ax, plot_obj[])
-        data = @view sample.q[:, :, :, options.fixed_slice4]
-        ax.title = flow_movie_title(sample, options.fixed_slice4, action_label)
+        q_display = display_q_density(sample, options, reference_peak)
+        data = @view q_display[:, :, :, options.fixed_slice4]
+        ax.title = flow_movie_title(sample, options.fixed_slice4, action_label,
+            options.display_normalization)
         plot_obj[] = VisualizingLQCD.plot_animation_slice!(ax, data, setup, setup.levels;
             a=options.a,
             lattice_size=(nx, ny, nz),
@@ -336,8 +457,10 @@ function render_movie(mode, samples, options)
             "a" => options.a,
         ),
         "observable" => Dict(
-            "kind" => "q_lat",
+            "kind" => options.display_normalization == DISPLAY_NORMALIZATION_RAW ?
+                      "q_lat" : "displayed q_lat/q_max",
             "normalization" => "Q_tot(t) = sum_n q_lat(n,t)",
+            "display_normalization" => String(options.display_normalization),
         ),
         "frame_map" => flowtime_frame_map(samples, options.frame_hold),
         "sample_summary" => [Dict(
@@ -345,9 +468,20 @@ function render_movie(mode, samples, options)
             "source_tau" => sample.tau,
             "Q_tot" => sample.q_total,
             "q_abs_maximum" => sample.q_abs_maximum,
+            "display" => display_sample_summary(sample, options, reference_peak),
             "metadata" => sample.metadata,
         ) for sample in samples],
         "display_transform" => setup.display_transform_info,
+        "display_normalization" => Dict(
+            "mode" => String(options.display_normalization),
+            "reference_peak" => reference_peak,
+            "floor_fraction" => options.normalization_floor_fraction,
+            "abs_floor" => options.normalization_abs_floor,
+            "effective_floor" => normalization_floor(reference_peak, options),
+            "normalized_body_level" => options.normalized_body_level,
+            "normalized_color_ceiling" => options.normalized_color_ceiling,
+            "collapse_policy" => "render zero field when per-frame normalization peak is at or below the effective floor",
+        ),
         "level_selection" => setup.level_selection_info,
         "render" => Dict(
             "output" => video_path,
@@ -389,6 +523,7 @@ function write_review_html(output_dir, results, options)
         "input_dir = $(options.input_dir)",
         "fixed_slice4 = $(options.fixed_slice4)",
         "render_mode = $(String(options.render_mode))",
+        "display_normalization = $(String(options.display_normalization))",
         "frame direction = gradient flow time t/a^2",
         "source tau metadata is interpreted as t/a^2",
     ), "\n"))
@@ -459,6 +594,16 @@ function main(args=ARGS)
         stride=parse(Int, arg_value(args, "stride", "1")),
         frame_hold=parse(Int, arg_value(args, "frame-hold", "1")),
         render_mode=parse_render_mode(arg_value(args, "render-mode", "volume")),
+        display_normalization=parse_display_normalization(arg_value(args,
+            "display-normalization", "raw")),
+        normalization_floor_fraction=parse(Float64, arg_value(args,
+            "normalization-floor-fraction", "1.0e-3")),
+        normalization_abs_floor=parse(Float64, arg_value(args,
+            "normalization-abs-floor", "0.0")),
+        normalized_body_level=parse(Float64, arg_value(args,
+            "normalized-body-level", "0.25")),
+        normalized_color_ceiling=parse(Float64, arg_value(args,
+            "normalized-color-ceiling", "1.0")),
         style_preset=parse_style_preset(arg_value(args, "style-preset", "balanced")),
         level_quantiles=parse_optional_quantiles(arg_value(args, "level-quantiles", ""),
             "--level-quantiles"),
@@ -481,6 +626,10 @@ function main(args=ARGS)
     options.frame_hold > 0 || throw(ArgumentError("--frame-hold should be positive"))
     options.framerate > 0 || throw(ArgumentError("--framerate should be positive"))
     options.a > 0 || throw(ArgumentError("--a should be positive"))
+    options.normalization_floor_fraction >= 0 ||
+        throw(ArgumentError("--normalization-floor-fraction should be nonnegative"))
+    options.normalization_abs_floor >= 0 ||
+        throw(ArgumentError("--normalization-abs-floor should be nonnegative"))
 
     samples = select_samples(discover_samples(options.input_dir), options.tau_list;
         stride=options.stride, tolerance=options.tau_tolerance)
