@@ -252,6 +252,58 @@ function select_samples(samples, tau_values; stride, tolerance)
     return selected
 end
 
+function interpolate_sample(samples, tau)
+    first(samples).tau <= tau <= last(samples).tau ||
+        throw(ArgumentError("frame tau=$tau is outside selected range"))
+    sample_taus = [sample.tau for sample in samples]
+    exact_index = findfirst(existing_tau -> isapprox(existing_tau, tau; atol=1.0e-10),
+        sample_taus)
+    exact_index === nothing || return samples[exact_index]
+
+    left_index = searchsortedlast(sample_taus, tau)
+    left_index = clamp(left_index, 1, length(samples) - 1)
+    right_index = left_index + 1
+    left = samples[left_index]
+    right = samples[right_index]
+    weight = (tau - left.tau) / (right.tau - left.tau)
+    q = (1 - weight) .* left.q .+ weight .* right.q
+    return (
+        path=@sprintf("linear_interpolation(t/a^2=%.8g)", tau),
+        tau=Float64(tau),
+        q=q,
+        metadata=Dict(
+            "source" => "linear interpolation between stored flow-time q_density frames",
+            "left_t_over_a2" => left.tau,
+            "right_t_over_a2" => right.tau,
+            "right_weight" => weight,
+            "left_file" => left.path,
+            "right_file" => right.path,
+        ),
+        q_total=sum(q),
+        q_abs_maximum=maximum(abs, q),
+    )
+end
+
+function animation_samples(samples, options)
+    if options.duration_seconds === nothing
+        frames = Any[]
+        for sample in samples
+            for _ in 1:options.frame_hold
+                push!(frames, sample)
+            end
+        end
+        return frames
+    end
+    frame_count = round(Int, options.duration_seconds * options.framerate)
+    frame_count >= 2 || throw(ArgumentError(
+        "--duration-seconds times --framerate should produce at least two frames"))
+    tau_min = first(samples).tau
+    tau_max = last(samples).tau
+    return [interpolate_sample(samples,
+        tau_min + (tau_max - tau_min) * (frame - 1) / (frame_count - 1))
+        for frame in 1:frame_count]
+end
+
 function normalization_peak(sample, display_normalization)
     display_normalization == DISPLAY_NORMALIZATION_RAW && return 1.0
     display_normalization == DISPLAY_NORMALIZATION_PER_FRAME_PEAK &&
@@ -575,27 +627,24 @@ function output_video_path(options, mode)
     return joinpath(options.output_dir, "$effective_stem$effective_ext")
 end
 
-function frame_sample_index(frame, frame_hold)
-    return div(frame - 1, frame_hold) + 1
-end
-
-function flowtime_frame_map(samples, frame_hold)
-    frame_count = length(samples) * frame_hold
+function flowtime_frame_map(samples)
+    frame_count = length(samples)
     return [Dict(
                 "frame" => frame,
-                "sample_index" => frame_sample_index(frame, frame_hold),
-                "t_over_a2" => samples[frame_sample_index(frame, frame_hold)].tau,
-                "source_tau" => samples[frame_sample_index(frame, frame_hold)].tau,
+                "t_over_a2" => samples[frame].tau,
+                "source_tau" => samples[frame].tau,
+                "source" => samples[frame].path,
             ) for frame in 1:frame_count]
 end
 
 function render_movie(mode, samples, options)
-    reference_peak = reference_normalization_peak(samples, options.display_normalization)
-    setup = setup_for_mode(samples, mode, options, reference_peak)
+    frames = animation_samples(samples, options)
+    reference_peak = reference_normalization_peak(frames, options.display_normalization)
+    setup = setup_for_mode(frames, mode, options, reference_peak)
     nx, ny, nz, nt = size(samples[1].q)
     1 <= options.fixed_slice4 <= nt ||
         throw(ArgumentError("--fixed-slice4 should be in 1:$nt"))
-    reference_positive_slice_charge = positive_slice_charge(first(samples).q,
+    reference_positive_slice_charge = positive_slice_charge(first(frames).q,
         options.fixed_slice4)
 
     video_path = output_video_path(options, mode)
@@ -619,7 +668,7 @@ function render_movie(mode, samples, options)
     y_physical = (options.a, options.a * ny)
     z_physical = (options.a, options.a * nz)
     plot_obj = Ref{Any}(nothing)
-    total_frames = length(samples) * options.frame_hold
+    total_frames = length(frames)
 
     function draw_sample!(sample)
         VisualizingLQCD.delete_plot_obj!(ax, plot_obj[])
@@ -644,7 +693,7 @@ function render_movie(mode, samples, options)
                nothing
     @printf("rendering %-7s flow-time movie -> %s\n", String(mode), video_path)
     record(fig, video_path, 1:total_frames; framerate=options.framerate) do frame
-        sample = samples[frame_sample_index(frame, options.frame_hold)]
+        sample = frames[frame]
         VisualizingLQCD.apply_camera_settings!(ax, camera, frame, total_frames)
         draw_sample!(sample)
         progress === nothing || next!(progress)
@@ -686,7 +735,7 @@ function render_movie(mode, samples, options)
             "visibility_gate" => String(options.visibility_gate),
             "target_topological_charge" => options.target_topological_charge,
         ),
-        "frame_map" => flowtime_frame_map(samples, options.frame_hold),
+        "frame_map" => flowtime_frame_map(frames),
         "sample_summary" => [Dict(
             "t_over_a2" => sample.tau,
             "source_tau" => sample.tau,
@@ -696,7 +745,7 @@ function render_movie(mode, samples, options)
             "level" => sample_level_summary(sample, options, reference_peak,
                 reference_positive_slice_charge),
             "metadata" => sample.metadata,
-        ) for sample in samples],
+        ) for sample in frames],
         "display_transform" => setup.display_transform_info,
         "display_normalization" => Dict(
             "mode" => String(options.display_normalization),
@@ -720,6 +769,7 @@ function render_movie(mode, samples, options)
             "render_style_info" => setup.render_style_info,
             "framerate" => options.framerate,
             "frame_hold" => options.frame_hold,
+            "duration_seconds" => options.duration_seconds,
             "frame_count" => total_frames,
             "figure_size" => [options.figure_size, options.figure_size],
             "camera" => VisualizingLQCD.camera_motion_metadata(camera),
@@ -752,6 +802,7 @@ function write_review_html(output_dir, results, options)
         "display_normalization = $(String(options.display_normalization))",
         "level_strategy = $(String(effective_level_strategy(options)))",
         "visibility_gate = $(String(options.visibility_gate))",
+        "duration_seconds = $(options.duration_seconds)",
         "frame direction = gradient flow time t/a^2",
         "source tau metadata is interpreted as t/a^2",
     ), "\n"))
@@ -821,6 +872,7 @@ function main(args=ARGS)
         tau_tolerance=parse(Float64, arg_value(args, "tau-tolerance", "1.0e-8")),
         stride=parse(Int, arg_value(args, "stride", "1")),
         frame_hold=parse(Int, arg_value(args, "frame-hold", "1")),
+        duration_seconds=parse_optional_float(arg_value(args, "duration-seconds", "")),
         render_mode=parse_render_mode(arg_value(args, "render-mode", "volume")),
         display_normalization=parse_display_normalization(arg_value(args,
             "display-normalization", "raw")),
@@ -860,6 +912,8 @@ function main(args=ARGS)
     )
     options.frame_hold > 0 || throw(ArgumentError("--frame-hold should be positive"))
     options.framerate > 0 || throw(ArgumentError("--framerate should be positive"))
+    (options.duration_seconds === nothing || options.duration_seconds > 0) ||
+        throw(ArgumentError("--duration-seconds should be positive"))
     options.a > 0 || throw(ArgumentError("--a should be positive"))
     options.normalization_floor_fraction >= 0 ||
         throw(ArgumentError("--normalization-floor-fraction should be nonnegative"))

@@ -51,6 +51,9 @@ so a disappearing lump fades instead of being re-amplified by a tiny peak.
 Use `--charge-fraction-fade false --visibility-gate topological-sector` when the
 goal is an opaque shape diagnostic: frames are rendered only while `Q_tot` is
 closer to the requested topological sector than to a neighboring integer sector.
+Use `--duration-seconds` to render a fixed wall-clock movie duration at the
+requested framerate. The helper linearly interpolates stored `q_density` frames
+in flow time and records that interpolation in the metadata sidecar.
 
 Use `--show-axis-labels false` for README-style orbit movies; it keeps the grid
 and 3D box but avoids axis-label shimmer during rotation.
@@ -104,6 +107,8 @@ Run from the repository root:
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --t-over-a2-list 0,1,2,4.5,8,12,18,24,30,40,50 --fixed-slice4 7 --level-strategy positive-charge-fraction --charge-fraction 0.50 --charge-fraction-fade true --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-charge-hdr --output-name su2_wilson_t0_50_slice7_charge_hdr50.mp4 --figure-size 440 --framerate 4 --show-render-progress false
 
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --t-over-a2-list 0,1,2,4.5,8,12,18,24,30,40,50 --fixed-slice4 7 --level-strategy positive-charge-fraction --charge-fraction 0.50 --charge-fraction-fade false --visibility-gate topological-sector --target-topological-charge 1 --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-charge-hdr-sector --output-name su2_wilson_t0_50_slice7_charge_hdr50_sector.mp4 --figure-size 440 --framerate 4 --show-render-progress false
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --fixed-slice4 7 --level-strategy positive-charge-fraction --charge-fraction 0.50 --charge-fraction-fade false --visibility-gate topological-sector --target-topological-charge 1 --duration-seconds 25 --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-charge-hdr-sector-25s --output-name su2_wilson_t0_50_slice7_charge_hdr50_sector_25s_24fps.mp4 --figure-size 440 --framerate 24 --show-render-progress false
 ```
 
 The accepted README sample can be reproduced from the same input configuration
