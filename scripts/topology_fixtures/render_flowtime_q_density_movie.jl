@@ -122,6 +122,22 @@ function metadata_to_dict(metadata)
     return Dict("raw" => string(metadata))
 end
 
+function inferred_flow_action_label(samples)
+    labels = String[]
+    for sample in samples
+        label = get(sample.metadata, "flow_action", "")
+        isempty(string(label)) || push!(labels, string(label))
+    end
+    labels = unique(labels)
+    return length(labels) == 1 ? labels[1] : ""
+end
+
+function flow_movie_title(sample, fixed_slice4, action_label)
+    prefix = isempty(action_label) ? "q_lat flow-time movie" : "q_lat $(action_label) flow"
+    return @sprintf("%s: t/a^2 = %.4g, fixed slice4 = %d, Q = %.6g",
+        prefix, sample.tau, fixed_slice4, sample.q_total)
+end
+
 function load_q_density_sample(path)
     data = JLD2.load(path)
     haskey(data, "q") || throw(ArgumentError("$path does not contain dataset q"))
@@ -257,12 +273,13 @@ function render_movie(mode, samples, options)
         camera_motion=options.camera_motion,
         camera_orbit_turns=options.camera_orbit_turns,
         camera_orbit_seconds=options.camera_orbit_seconds)
+    action_label = isempty(options.action_label) ?
+                   inferred_flow_action_label(samples) : options.action_label
 
     fig = Figure(
         size=(options.figure_size, options.figure_size),
         backgroundcolor=theme_settings.figure_background)
-    title = @sprintf("q_lat flow-time movie: flow t/a^2 = %.4g, fixed slice4 = %d",
-        samples[1].tau, options.fixed_slice4)
+    title = flow_movie_title(samples[1], options.fixed_slice4, action_label)
     ax = Axis3(fig[1, 1]; axis_kwargs(title, setup, theme_settings, camera, options)...)
     limits!(ax, 0, options.a * nx, 0, options.a * ny, 0, options.a * nz)
 
@@ -275,8 +292,7 @@ function render_movie(mode, samples, options)
     function draw_sample!(sample)
         VisualizingLQCD.delete_plot_obj!(ax, plot_obj[])
         data = @view sample.q[:, :, :, options.fixed_slice4]
-        ax.title = @sprintf("q_lat flow-time movie: flow t/a^2 = %.4g, fixed slice4 = %d, Q = %.6g",
-            sample.tau, options.fixed_slice4, sample.q_total)
+        ax.title = flow_movie_title(sample, options.fixed_slice4, action_label)
         plot_obj[] = VisualizingLQCD.plot_animation_slice!(ax, data, setup, setup.levels;
             a=options.a,
             lattice_size=(nx, ny, nz),
@@ -312,6 +328,7 @@ function render_movie(mode, samples, options)
             "input_dir" => options.input_dir,
             "file_count" => length(samples),
             "files" => [sample.path for sample in samples],
+            "flow_action_label" => action_label,
         ),
         "configuration" => Dict(
             "lattice_size" => [nx, ny, nz, nt],
@@ -338,6 +355,7 @@ function render_movie(mode, samples, options)
             "render_mode" => String(mode),
             "render_theme" => String(options.render_theme),
             "style_preset" => String(options.style_preset),
+            "flow_action_label" => action_label,
             "levels" => collect(setup.levels),
             "render_style_info" => setup.render_style_info,
             "framerate" => options.framerate,
@@ -433,6 +451,7 @@ function main(args=ARGS)
         input_dir=arg_value(args, "input-dir", DEFAULT_INPUT_DIR),
         output_dir=arg_value(args, "output-dir", "/private/tmp/VisualizingLQCD-flowtime-q-density"),
         output_name=arg_value(args, "output-name", "flowtime_q_density_slice7.mp4"),
+        action_label=arg_value(args, "action-label", ""),
         fixed_slice4=parse(Int, arg_value(args, "fixed-slice4", "7")),
         tau_list=parse_tau_list(arg_value(args, "t-over-a2-list",
             arg_value(args, "tau-list", ""))),
