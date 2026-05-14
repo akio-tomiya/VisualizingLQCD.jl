@@ -111,6 +111,11 @@ Run from the repository root:
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --fixed-slice4 7 --level-strategy positive-charge-fraction --charge-fraction 0.50 --charge-fraction-fade false --visibility-gate topological-sector --target-topological-charge 1 --duration-seconds 25 --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-charge-hdr-sector-25s --output-name su2_wilson_t0_50_slice7_charge_hdr50_sector_25s_24fps.mp4 --figure-size 440 --framerate 24 --show-render-progress false
 ```
 
+The flow-time movie renderer adds a compact in-frame progress strip by default.
+The strip uses fixed-width decimal formatting for `t/a^2`, so the upper text
+does not shift when the number of digits changes. Disable it with
+`--show-flow-progress-bar false` when a bare `Axis3` title is preferred.
+
 The accepted README sample can be reproduced from the same input configuration
 with the following reviewed settings:
 

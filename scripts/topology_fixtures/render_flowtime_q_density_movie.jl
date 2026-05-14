@@ -23,6 +23,8 @@ const LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION = :positive_charge_fraction
 const VISIBILITY_GATE_NONE = :none
 const VISIBILITY_GATE_TOPOLOGICAL_SECTOR = :topological_sector
 
+const FLOW_PROGRESS_BAR_HEIGHT = 48
+
 const DEFAULT_INPUT_DIR =
     "/Users/akio/repository/gaugefields_instanton_radius/results/yitp_action_scan_tau50_20260513/su2_wilson_long_flow_tau50_20260513/R3p00/q_density"
 
@@ -189,7 +191,8 @@ end
 function level_strategy_label(options)
     strategy = effective_level_strategy(options)
     strategy == LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION &&
-        return @sprintf("positive-charge HDR%.0f", 100 * options.charge_fraction)
+        return options.show_flow_progress_bar ? "" :
+               @sprintf("positive-charge HDR%.0f", 100 * options.charge_fraction)
     return ""
 end
 
@@ -201,6 +204,34 @@ function flow_movie_title(sample, fixed_slice4, action_label, options)
              "$prefix_observable $(action_label) flow"
     return @sprintf("%s: t/a^2 = %.4g, fixed slice4 = %d, Q = %.6g",
         prefix, sample.tau, fixed_slice4, sample.q_total)
+end
+
+function compact_action_label(action_label)
+    isempty(action_label) && return "Flow"
+    return action_label
+end
+
+function flow_overlay_label(sample, fixed_slice4, action_label, tau_max)
+    return @sprintf("%s  t/a^2 %06.2f/%06.2f  x4=%d",
+        compact_action_label(action_label), sample.tau, tau_max, fixed_slice4)
+end
+
+function progress_fraction(sample, tau_min, tau_max)
+    tau_max > tau_min || return 1.0
+    return clamp((sample.tau - tau_min) / (tau_max - tau_min), 0.0, 1.0)
+end
+
+function progress_bar_points(fraction)
+    x0 = 0.02f0
+    x1 = 0.98f0
+    return Point2f[(x0, 0.18f0), (x0 + (x1 - x0) * Float32(fraction), 0.18f0)]
+end
+
+function figure_pixel_size(options)
+    if options.show_flow_progress_bar
+        return (options.figure_size, options.figure_size + FLOW_PROGRESS_BAR_HEIGHT)
+    end
+    return (options.figure_size, options.figure_size)
 end
 
 function load_q_density_sample(path)
@@ -619,6 +650,58 @@ function axis_kwargs(title, setup, theme_settings, camera, options)
     return kwargs
 end
 
+function progress_bar_color(render_theme)
+    render_theme == VisualizingLQCD.RENDER_THEME_LIGHT && return :royalblue
+    return :deepskyblue
+end
+
+function setup_flow_progress_overlay!(fig, first_sample, fixed_slice4, action_label,
+    options, tau_min, tau_max, theme_settings)
+
+    options.show_flow_progress_bar || return nothing
+    rowsize!(fig.layout, 1, Fixed(FLOW_PROGRESS_BAR_HEIGHT))
+    bar_ax = Axis(fig[1, 1]; backgroundcolor=theme_settings.figure_background)
+    hidedecorations!(bar_ax)
+    hidespines!(bar_ax)
+    xlims!(bar_ax, 0, 1)
+    ylims!(bar_ax, 0, 1)
+
+    label_text = Observable(flow_overlay_label(first_sample, fixed_slice4, action_label,
+        tau_max))
+    progress_points = Observable(progress_bar_points(progress_fraction(first_sample,
+        tau_min, tau_max)))
+
+    text!(bar_ax, 0.02, 0.64;
+        text=label_text,
+        align=(:left, :center),
+        fontsize=11,
+        color=theme_settings.text_color)
+    lines!(bar_ax, Point2f[(0.02, 0.18), (0.98, 0.18)];
+        color=(theme_settings.text_color, 0.22),
+        linewidth=7)
+    lines!(bar_ax, progress_points;
+        color=progress_bar_color(options.render_theme),
+        linewidth=7)
+
+    return (
+        label_text=label_text,
+        progress_points=progress_points,
+        tau_min=tau_min,
+        tau_max=tau_max,
+        fixed_slice4=fixed_slice4,
+        action_label=action_label,
+    )
+end
+
+function update_flow_progress_overlay!(overlay, sample)
+    overlay === nothing && return nothing
+    overlay.label_text[] = flow_overlay_label(sample, overlay.fixed_slice4,
+        overlay.action_label, overlay.tau_max)
+    overlay.progress_points[] = progress_bar_points(progress_fraction(sample,
+        overlay.tau_min, overlay.tau_max))
+    return nothing
+end
+
 function output_video_path(options, mode)
     stem, ext = splitext(options.output_name)
     effective_ext = isempty(ext) ? ".mp4" : ext
@@ -658,10 +741,16 @@ function render_movie(mode, samples, options)
                    inferred_flow_action_label(samples) : options.action_label
 
     fig = Figure(
-        size=(options.figure_size, options.figure_size),
+        size=figure_pixel_size(options),
         backgroundcolor=theme_settings.figure_background)
-    title = flow_movie_title(samples[1], options.fixed_slice4, action_label, options)
-    ax = Axis3(fig[1, 1]; axis_kwargs(title, setup, theme_settings, camera, options)...)
+    tau_min = first(frames).tau
+    tau_max = last(frames).tau
+    overlay = setup_flow_progress_overlay!(fig, first(frames), options.fixed_slice4,
+        action_label, options, tau_min, tau_max, theme_settings)
+    axis_row = options.show_flow_progress_bar ? 2 : 1
+    title = options.show_flow_progress_bar ? "" :
+            flow_movie_title(samples[1], options.fixed_slice4, action_label, options)
+    ax = Axis3(fig[axis_row, 1]; axis_kwargs(title, setup, theme_settings, camera, options)...)
     limits!(ax, 0, options.a * nx, 0, options.a * ny, 0, options.a * nz)
 
     x_physical = (options.a, options.a * nx)
@@ -676,7 +765,12 @@ function render_movie(mode, samples, options)
         data = @view q_display[:, :, :, options.fixed_slice4]
         sample_setup = positive_charge_fraction_level_setup(setup, data, sample, options,
             reference_positive_slice_charge)
-        ax.title = flow_movie_title(sample, options.fixed_slice4, action_label, options)
+        if options.show_flow_progress_bar
+            update_flow_progress_overlay!(overlay, sample)
+            ax.title = ""
+        else
+            ax.title = flow_movie_title(sample, options.fixed_slice4, action_label, options)
+        end
         plot_obj[] = VisualizingLQCD.plot_animation_slice!(ax, data, sample_setup,
             sample_setup.levels;
             a=options.a,
@@ -771,7 +865,8 @@ function render_movie(mode, samples, options)
             "frame_hold" => options.frame_hold,
             "duration_seconds" => options.duration_seconds,
             "frame_count" => total_frames,
-            "figure_size" => [options.figure_size, options.figure_size],
+            "figure_size" => collect(figure_pixel_size(options)),
+            "show_flow_progress_bar" => options.show_flow_progress_bar,
             "camera" => VisualizingLQCD.camera_motion_metadata(camera),
             "show_axis_labels" => options.show_axis_labels,
         ),
@@ -803,6 +898,7 @@ function write_review_html(output_dir, results, options)
         "level_strategy = $(String(effective_level_strategy(options)))",
         "visibility_gate = $(String(options.visibility_gate))",
         "duration_seconds = $(options.duration_seconds)",
+        "show_flow_progress_bar = $(options.show_flow_progress_bar)",
         "frame direction = gradient flow time t/a^2",
         "source tau metadata is interpreted as t/a^2",
     ), "\n"))
@@ -906,6 +1002,8 @@ function main(args=ARGS)
         a=parse(Float64, arg_value(args, "a", "1.0")),
         show_axis_labels=parse_bool(arg_value(args, "show-axis-labels", "true"),
             "--show-axis-labels"),
+        show_flow_progress_bar=parse_bool(arg_value(args, "show-flow-progress-bar", "true"),
+            "--show-flow-progress-bar"),
         show_render_progress=parse_bool(arg_value(args, "show-render-progress", "true"),
             "--show-render-progress"),
         dry_run=parse_bool(arg_value(args, "dry-run", "false"), "--dry-run"),
