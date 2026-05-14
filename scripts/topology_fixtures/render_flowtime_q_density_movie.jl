@@ -216,15 +216,24 @@ function flow_overlay_label(sample, fixed_slice4, action_label, tau_max)
         compact_action_label(action_label), sample.tau, tau_max, fixed_slice4)
 end
 
-function progress_fraction(sample, tau_min, tau_max)
+function progress_fraction_value(tau, tau_min, tau_max)
     tau_max > tau_min || return 1.0
-    return clamp((sample.tau - tau_min) / (tau_max - tau_min), 0.0, 1.0)
+    return clamp((tau - tau_min) / (tau_max - tau_min), 0.0, 1.0)
+end
+
+function progress_fraction(sample, tau_min, tau_max)
+    return progress_fraction_value(sample.tau, tau_min, tau_max)
+end
+
+function progress_bar_x(fraction)
+    x0 = 0.02f0
+    x1 = 0.98f0
+    return x0 + (x1 - x0) * Float32(fraction)
 end
 
 function progress_bar_points(fraction)
     x0 = 0.02f0
-    x1 = 0.98f0
-    return Point2f[(x0, 0.18f0), (x0 + (x1 - x0) * Float32(fraction), 0.18f0)]
+    return Point2f[(x0, 0.18f0), (progress_bar_x(fraction), 0.18f0)]
 end
 
 function figure_pixel_size(options)
@@ -232,6 +241,20 @@ function figure_pixel_size(options)
         return (options.figure_size, options.figure_size + FLOW_PROGRESS_BAR_HEIGHT)
     end
     return (options.figure_size, options.figure_size)
+end
+
+function smoothing_half_box_marker_info(options, dims, tau_min, tau_max)
+    options.show_smoothing_half_box_marker || return nothing
+    box_length = options.smoothing_box_length === nothing ?
+                 Float64(minimum(dims)) : options.smoothing_box_length
+    marker_tau = box_length^2 / 32
+    return Dict(
+        "active" => tau_min <= marker_tau <= tau_max,
+        "t_over_a2" => marker_tau,
+        "box_length_lattice_units" => box_length,
+        "label" => "lambda_s=L/2",
+        "formula" => "lambda_s/a = sqrt(8 t/a^2), marker at t/a^2 = L^2/32",
+    )
 end
 
 function load_q_density_sample(path)
@@ -522,6 +545,29 @@ function positive_charge_fraction_level_setup(base_setup, data, sample, options,
     ))
 end
 
+function inactive_visibility_setup(base_setup, gate)
+    render_style_info = merge(Dict(base_setup.render_style_info), Dict(
+        "active" => false,
+        "visibility_gate" => gate,
+    ))
+    return merge(base_setup, (
+        levels=(0.0,),
+        positive_body_level=nothing,
+        negative_body_level=nothing,
+        positive_color_range=nothing,
+        negative_color_range=nothing,
+        alpha=0.0,
+        transparency=true,
+        render_style_info=render_style_info,
+    ))
+end
+
+function apply_visibility_gate_to_setup(base_setup, sample, options)
+    gate = visibility_gate_summary(sample, options)
+    gate["active"] && return base_setup
+    return inactive_visibility_setup(base_setup, gate)
+end
+
 function sample_level_summary(sample, options, reference_peak, reference_positive_slice_charge)
     strategy = effective_level_strategy(options)
     strategy != LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION &&
@@ -656,7 +702,7 @@ function progress_bar_color(render_theme)
 end
 
 function setup_flow_progress_overlay!(fig, first_sample, fixed_slice4, action_label,
-    options, tau_min, tau_max, theme_settings)
+    options, tau_min, tau_max, theme_settings, smoothing_marker)
 
     options.show_flow_progress_bar || return nothing
     rowsize!(fig.layout, 1, Fixed(FLOW_PROGRESS_BAR_HEIGHT))
@@ -682,6 +728,20 @@ function setup_flow_progress_overlay!(fig, first_sample, fixed_slice4, action_la
     lines!(bar_ax, progress_points;
         color=progress_bar_color(options.render_theme),
         linewidth=7)
+    if smoothing_marker !== nothing && smoothing_marker["active"]
+        marker_fraction = progress_fraction_value(smoothing_marker["t_over_a2"],
+            tau_min, tau_max)
+        marker_x = progress_bar_x(marker_fraction)
+        marker_color = (theme_settings.text_color, 0.86)
+        lines!(bar_ax, Point2f[(marker_x, 0.06f0), (marker_x, 0.35f0)];
+            color=marker_color,
+            linewidth=2)
+        text!(bar_ax, marker_x, 0.39;
+            text=smoothing_marker["label"],
+            align=(:center, :bottom),
+            fontsize=8,
+            color=marker_color)
+    end
 
     return (
         label_text=label_text,
@@ -690,6 +750,7 @@ function setup_flow_progress_overlay!(fig, first_sample, fixed_slice4, action_la
         tau_max=tau_max,
         fixed_slice4=fixed_slice4,
         action_label=action_label,
+        smoothing_marker=smoothing_marker,
     )
 end
 
@@ -745,8 +806,10 @@ function render_movie(mode, samples, options)
         backgroundcolor=theme_settings.figure_background)
     tau_min = first(frames).tau
     tau_max = last(frames).tau
+    smoothing_marker = smoothing_half_box_marker_info(options, (nx, ny, nz, nt),
+        tau_min, tau_max)
     overlay = setup_flow_progress_overlay!(fig, first(frames), options.fixed_slice4,
-        action_label, options, tau_min, tau_max, theme_settings)
+        action_label, options, tau_min, tau_max, theme_settings, smoothing_marker)
     axis_row = options.show_flow_progress_bar ? 2 : 1
     title = options.show_flow_progress_bar ? "" :
             flow_movie_title(samples[1], options.fixed_slice4, action_label, options)
@@ -765,6 +828,7 @@ function render_movie(mode, samples, options)
         data = @view q_display[:, :, :, options.fixed_slice4]
         sample_setup = positive_charge_fraction_level_setup(setup, data, sample, options,
             reference_positive_slice_charge)
+        sample_setup = apply_visibility_gate_to_setup(sample_setup, sample, options)
         if options.show_flow_progress_bar
             update_flow_progress_overlay!(overlay, sample)
             ax.title = ""
@@ -867,6 +931,7 @@ function render_movie(mode, samples, options)
             "frame_count" => total_frames,
             "figure_size" => collect(figure_pixel_size(options)),
             "show_flow_progress_bar" => options.show_flow_progress_bar,
+            "smoothing_half_box_marker" => smoothing_marker,
             "camera" => VisualizingLQCD.camera_motion_metadata(camera),
             "show_axis_labels" => options.show_axis_labels,
         ),
@@ -899,6 +964,7 @@ function write_review_html(output_dir, results, options)
         "visibility_gate = $(String(options.visibility_gate))",
         "duration_seconds = $(options.duration_seconds)",
         "show_flow_progress_bar = $(options.show_flow_progress_bar)",
+        "show_smoothing_half_box_marker = $(options.show_smoothing_half_box_marker)",
         "frame direction = gradient flow time t/a^2",
         "source tau metadata is interpreted as t/a^2",
     ), "\n"))
@@ -1004,6 +1070,11 @@ function main(args=ARGS)
             "--show-axis-labels"),
         show_flow_progress_bar=parse_bool(arg_value(args, "show-flow-progress-bar", "true"),
             "--show-flow-progress-bar"),
+        show_smoothing_half_box_marker=parse_bool(arg_value(args,
+            "show-smoothing-half-box-marker", "false"),
+            "--show-smoothing-half-box-marker"),
+        smoothing_box_length=parse_optional_float(arg_value(args,
+            "smoothing-box-length", "")),
         show_render_progress=parse_bool(arg_value(args, "show-render-progress", "true"),
             "--show-render-progress"),
         dry_run=parse_bool(arg_value(args, "dry-run", "false"), "--dry-run"),
@@ -1013,6 +1084,8 @@ function main(args=ARGS)
     (options.duration_seconds === nothing || options.duration_seconds > 0) ||
         throw(ArgumentError("--duration-seconds should be positive"))
     options.a > 0 || throw(ArgumentError("--a should be positive"))
+    (options.smoothing_box_length === nothing || options.smoothing_box_length > 0) ||
+        throw(ArgumentError("--smoothing-box-length should be positive"))
     options.normalization_floor_fraction >= 0 ||
         throw(ArgumentError("--normalization-floor-fraction should be nonnegative"))
     options.normalization_abs_floor >= 0 ||
