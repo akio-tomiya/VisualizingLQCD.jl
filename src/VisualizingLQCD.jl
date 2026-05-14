@@ -2,7 +2,6 @@ module VisualizingLQCD
 using Gaugefields
 using Wilsonloop
 using LinearAlgebra
-using Plots
 using Interpolations
 using LaTeXStrings
 using Printf
