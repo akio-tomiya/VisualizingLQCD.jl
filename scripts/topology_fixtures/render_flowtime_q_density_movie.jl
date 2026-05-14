@@ -15,6 +15,11 @@ const DISPLAY_NORMALIZATION_RAW = :raw
 const DISPLAY_NORMALIZATION_PER_FRAME_PEAK = :per_frame_peak
 const DISPLAY_NORMALIZATION_PER_FRAME_ABSMAX = :per_frame_absmax
 
+const LEVEL_STRATEGY_AUTO = :auto
+const LEVEL_STRATEGY_GLOBAL_QUANTILE = :global_quantile
+const LEVEL_STRATEGY_FIXED_NORMALIZED = :fixed_normalized
+const LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION = :positive_charge_fraction
+
 const DEFAULT_INPUT_DIR =
     "/Users/akio/repository/gaugefields_instanton_radius/results/yitp_action_scan_tau50_20260513/su2_wilson_long_flow_tau50_20260513/R3p00/q_density"
 
@@ -84,6 +89,25 @@ function parse_display_normalization(raw)
     return mode
 end
 
+function parse_level_strategy(raw)
+    normalized = replace(lowercase(raw), "-" => "_")
+    mode = Symbol(normalized)
+    mode in (
+        LEVEL_STRATEGY_AUTO,
+        LEVEL_STRATEGY_GLOBAL_QUANTILE,
+        LEVEL_STRATEGY_FIXED_NORMALIZED,
+        LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION,
+    ) || throw(ArgumentError(
+        "--level-strategy should be auto, global-quantile, fixed-normalized, or positive-charge-fraction"))
+    return mode
+end
+
+function effective_level_strategy(options)
+    options.level_strategy != LEVEL_STRATEGY_AUTO && return options.level_strategy
+    return options.display_normalization == DISPLAY_NORMALIZATION_RAW ?
+           LEVEL_STRATEGY_GLOBAL_QUANTILE : LEVEL_STRATEGY_FIXED_NORMALIZED
+end
+
 function parse_style_preset(raw)
     return VisualizingLQCD.validate_topological_charge_style_preset(Symbol(raw))
 end
@@ -148,9 +172,19 @@ function inferred_flow_action_label(samples)
     return length(labels) == 1 ? labels[1] : ""
 end
 
-function flow_movie_title(sample, fixed_slice4, action_label, display_normalization)
-    observable = display_normalization == DISPLAY_NORMALIZATION_RAW ? "q_lat" : "q_lat/q_max"
-    prefix = isempty(action_label) ? "$observable flow-time movie" : "$observable $(action_label) flow"
+function level_strategy_label(options)
+    strategy = effective_level_strategy(options)
+    strategy == LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION &&
+        return @sprintf("positive-charge HDR%.0f", 100 * options.charge_fraction)
+    return ""
+end
+
+function flow_movie_title(sample, fixed_slice4, action_label, options)
+    observable = options.display_normalization == DISPLAY_NORMALIZATION_RAW ? "q_lat" : "q_lat/q_max"
+    level_label = level_strategy_label(options)
+    prefix_observable = isempty(level_label) ? observable : "$observable $level_label"
+    prefix = isempty(action_label) ? "$prefix_observable flow-time movie" :
+             "$prefix_observable $(action_label) flow"
     return @sprintf("%s: t/a^2 = %.4g, fixed slice4 = %d, Q = %.6g",
         prefix, sample.tau, fixed_slice4, sample.q_total)
 end
@@ -257,6 +291,136 @@ function display_sample_summary(sample, options, reference_peak)
     )
 end
 
+function positive_slice_charge(q, fixed_slice4)
+    data = @view q[:, :, :, fixed_slice4]
+    return sum(max.(data, 0.0))
+end
+
+function charge_fraction_threshold(data, fraction)
+    0 < fraction <= 1 ||
+        throw(ArgumentError("--charge-fraction should be in (0, 1]"))
+    positive_values = Float64[]
+    for value in data
+        value > 0 && push!(positive_values, Float64(value))
+    end
+    isempty(positive_values) && return nothing
+    total = sum(positive_values)
+    total > 0 || return nothing
+    sort!(positive_values; rev=true)
+    target = fraction * total
+    cumulative = 0.0
+    threshold = last(positive_values)
+    for value in positive_values
+        cumulative += value
+        threshold = value
+        cumulative >= target && break
+    end
+    return (
+        threshold=threshold,
+        total_positive=total,
+        selected_positive=cumulative,
+        selected_fraction=cumulative / total,
+        selected_sites=count(>=(threshold), positive_values),
+    )
+end
+
+function charge_fraction_alpha(sample, options, reference_positive_slice_charge)
+    options.charge_fraction_fade || return nothing
+    reference_positive_slice_charge > 0 || return 0.0
+    charge = positive_slice_charge(sample.q, options.fixed_slice4)
+    return clamp(charge / reference_positive_slice_charge, 0.0, 1.0)
+end
+
+function positive_charge_fraction_level_setup(base_setup, data, sample, options,
+    reference_positive_slice_charge)
+    effective_level_strategy(options) == LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION ||
+        return base_setup
+    (:mesh_renderer in keys(base_setup)) &&
+        base_setup.mesh_renderer == :topological_charge_volume ||
+        return base_setup
+
+    threshold_info = charge_fraction_threshold(data, options.charge_fraction)
+    alpha = something(charge_fraction_alpha(sample, options, reference_positive_slice_charge),
+        base_setup.alpha)
+    render_style_info = merge(Dict(base_setup.render_style_info), Dict(
+        "level_strategy" => String(LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION),
+        "charge_fraction" => options.charge_fraction,
+        "charge_fraction_fade" => options.charge_fraction_fade,
+        "positive_slice_charge" => positive_slice_charge(sample.q, options.fixed_slice4),
+        "reference_positive_slice_charge" => reference_positive_slice_charge,
+        "alpha" => alpha,
+        "transparency" => options.charge_fraction_fade || base_setup.transparency,
+    ))
+    if threshold_info === nothing
+        return merge(base_setup, (
+            levels=(0.0,),
+            positive_body_level=nothing,
+            negative_body_level=nothing,
+            positive_color_range=nothing,
+            negative_color_range=nothing,
+            alpha=0.0,
+            transparency=true,
+            level_selection_info=Dict(
+                "method" => "positive_charge_fraction_highest_density_region",
+                "charge_fraction" => options.charge_fraction,
+                "active" => false,
+                "note" => "no positive density on the displayed slice",
+            ),
+            render_style_info=merge(render_style_info, Dict("active" => false)),
+        ))
+    end
+    threshold = threshold_info.threshold
+    ceiling = max(maximum(data), threshold)
+    level_selection_info = Dict(
+        "method" => "positive_charge_fraction_highest_density_region",
+        "charge_fraction" => options.charge_fraction,
+        "active" => true,
+        "positive_body_level" => threshold,
+        "positive_color_ceiling" => ceiling,
+        "total_positive_slice_charge" => threshold_info.total_positive,
+        "selected_positive_slice_charge" => threshold_info.selected_positive,
+        "selected_fraction" => threshold_info.selected_fraction,
+        "selected_sites" => threshold_info.selected_sites,
+        "note" => "threshold is chosen on the displayed 3D slice so the highest-density positive region carries the requested fraction of positive slice charge",
+    )
+    return merge(base_setup, (
+        levels=(threshold,),
+        positive_body_level=threshold,
+        negative_body_level=nothing,
+        positive_color_range=(threshold, ceiling),
+        negative_color_range=nothing,
+        alpha=alpha,
+        transparency=options.charge_fraction_fade || base_setup.transparency,
+        level_selection_info=level_selection_info,
+        render_style_info=merge(render_style_info, level_selection_info),
+    ))
+end
+
+function sample_level_summary(sample, options, reference_peak, reference_positive_slice_charge)
+    strategy = effective_level_strategy(options)
+    strategy != LEVEL_STRATEGY_POSITIVE_CHARGE_FRACTION &&
+        return Dict("level_strategy" => String(strategy))
+    q_display = display_q_density(sample, options, reference_peak)
+    data = @view q_display[:, :, :, options.fixed_slice4]
+    threshold_info = charge_fraction_threshold(data, options.charge_fraction)
+    raw_positive_charge = positive_slice_charge(sample.q, options.fixed_slice4)
+    alpha = charge_fraction_alpha(sample, options, reference_positive_slice_charge)
+    summary = Dict{String,Any}(
+        "level_strategy" => String(strategy),
+        "charge_fraction" => options.charge_fraction,
+        "positive_slice_charge" => raw_positive_charge,
+        "reference_positive_slice_charge" => reference_positive_slice_charge,
+        "charge_fraction_alpha" => alpha,
+        "active" => threshold_info !== nothing,
+    )
+    threshold_info === nothing && return summary
+    summary["positive_body_level"] = threshold_info.threshold
+    summary["selected_positive_slice_charge"] = threshold_info.selected_positive
+    summary["selected_fraction"] = threshold_info.selected_fraction
+    summary["selected_sites"] = threshold_info.selected_sites
+    return summary
+end
+
 function density_stack(samples, options, reference_peak)
     nx, ny, nz, nt = size(samples[1].q)
     stack = Array{Float64}(undef, nx, ny, nz, nt, length(samples))
@@ -269,6 +433,7 @@ function density_stack(samples, options, reference_peak)
 end
 
 function fixed_normalized_level_setup(setup, options)
+    effective_level_strategy(options) == LEVEL_STRATEGY_FIXED_NORMALIZED || return setup
     options.display_normalization == DISPLAY_NORMALIZATION_RAW && return setup
     is_topological_volume = (:mesh_renderer in keys(setup)) &&
                             setup.mesh_renderer == :topological_charge_volume
@@ -383,6 +548,8 @@ function render_movie(mode, samples, options)
     nx, ny, nz, nt = size(samples[1].q)
     1 <= options.fixed_slice4 <= nt ||
         throw(ArgumentError("--fixed-slice4 should be in 1:$nt"))
+    reference_positive_slice_charge = positive_slice_charge(first(samples).q,
+        options.fixed_slice4)
 
     video_path = output_video_path(options, mode)
     metadata_path = string(video_path, ".metadata.json")
@@ -397,8 +564,7 @@ function render_movie(mode, samples, options)
     fig = Figure(
         size=(options.figure_size, options.figure_size),
         backgroundcolor=theme_settings.figure_background)
-    title = flow_movie_title(samples[1], options.fixed_slice4, action_label,
-        options.display_normalization)
+    title = flow_movie_title(samples[1], options.fixed_slice4, action_label, options)
     ax = Axis3(fig[1, 1]; axis_kwargs(title, setup, theme_settings, camera, options)...)
     limits!(ax, 0, options.a * nx, 0, options.a * ny, 0, options.a * nz)
 
@@ -412,9 +578,11 @@ function render_movie(mode, samples, options)
         VisualizingLQCD.delete_plot_obj!(ax, plot_obj[])
         q_display = display_q_density(sample, options, reference_peak)
         data = @view q_display[:, :, :, options.fixed_slice4]
-        ax.title = flow_movie_title(sample, options.fixed_slice4, action_label,
-            options.display_normalization)
-        plot_obj[] = VisualizingLQCD.plot_animation_slice!(ax, data, setup, setup.levels;
+        sample_setup = positive_charge_fraction_level_setup(setup, data, sample, options,
+            reference_positive_slice_charge)
+        ax.title = flow_movie_title(sample, options.fixed_slice4, action_label, options)
+        plot_obj[] = VisualizingLQCD.plot_animation_slice!(ax, data, sample_setup,
+            sample_setup.levels;
             a=options.a,
             lattice_size=(nx, ny, nz),
             x_physical=x_physical,
@@ -462,6 +630,13 @@ function render_movie(mode, samples, options)
             "normalization" => "Q_tot(t) = sum_n q_lat(n,t)",
             "display_normalization" => String(options.display_normalization),
         ),
+        "level_strategy" => Dict(
+            "mode" => String(effective_level_strategy(options)),
+            "requested" => String(options.level_strategy),
+            "charge_fraction" => options.charge_fraction,
+            "charge_fraction_fade" => options.charge_fraction_fade,
+            "reference_positive_slice_charge" => reference_positive_slice_charge,
+        ),
         "frame_map" => flowtime_frame_map(samples, options.frame_hold),
         "sample_summary" => [Dict(
             "t_over_a2" => sample.tau,
@@ -469,6 +644,8 @@ function render_movie(mode, samples, options)
             "Q_tot" => sample.q_total,
             "q_abs_maximum" => sample.q_abs_maximum,
             "display" => display_sample_summary(sample, options, reference_peak),
+            "level" => sample_level_summary(sample, options, reference_peak,
+                reference_positive_slice_charge),
             "metadata" => sample.metadata,
         ) for sample in samples],
         "display_transform" => setup.display_transform_info,
@@ -524,6 +701,7 @@ function write_review_html(output_dir, results, options)
         "fixed_slice4 = $(options.fixed_slice4)",
         "render_mode = $(String(options.render_mode))",
         "display_normalization = $(String(options.display_normalization))",
+        "level_strategy = $(String(effective_level_strategy(options)))",
         "frame direction = gradient flow time t/a^2",
         "source tau metadata is interpreted as t/a^2",
     ), "\n"))
@@ -596,6 +774,10 @@ function main(args=ARGS)
         render_mode=parse_render_mode(arg_value(args, "render-mode", "volume")),
         display_normalization=parse_display_normalization(arg_value(args,
             "display-normalization", "raw")),
+        level_strategy=parse_level_strategy(arg_value(args, "level-strategy", "auto")),
+        charge_fraction=parse(Float64, arg_value(args, "charge-fraction", "0.50")),
+        charge_fraction_fade=parse_bool(arg_value(args, "charge-fraction-fade", "true"),
+            "--charge-fraction-fade"),
         normalization_floor_fraction=parse(Float64, arg_value(args,
             "normalization-floor-fraction", "1.0e-3")),
         normalization_abs_floor=parse(Float64, arg_value(args,
@@ -630,6 +812,8 @@ function main(args=ARGS)
         throw(ArgumentError("--normalization-floor-fraction should be nonnegative"))
     options.normalization_abs_floor >= 0 ||
         throw(ArgumentError("--normalization-abs-floor should be nonnegative"))
+    0 < options.charge_fraction <= 1 ||
+        throw(ArgumentError("--charge-fraction should be in (0, 1]"))
 
     samples = select_samples(discover_samples(options.input_dir), options.tau_list;
         stride=options.stride, tolerance=options.tau_tolerance)
