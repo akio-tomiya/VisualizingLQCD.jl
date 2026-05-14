@@ -260,7 +260,7 @@ function render_movie(mode, samples, options)
     fig = Figure(
         size=(options.figure_size, options.figure_size),
         backgroundcolor=theme_settings.figure_background)
-    title = @sprintf("q_lat flow-time movie: tau = %.4g, x4/a = %d",
+    title = @sprintf("q_lat flow-time movie: flow tau = %.4g, fixed slice4 = %d",
         samples[1].tau, options.fixed_slice4)
     ax = Axis3(fig[1, 1]; axis_kwargs(title, setup, theme_settings, camera, options)...)
     limits!(ax, 0, options.a * nx, 0, options.a * ny, 0, options.a * nz)
@@ -274,7 +274,7 @@ function render_movie(mode, samples, options)
     function draw_sample!(sample)
         VisualizingLQCD.delete_plot_obj!(ax, plot_obj[])
         data = @view sample.q[:, :, :, options.fixed_slice4]
-        ax.title = @sprintf("q_lat flow-time movie: tau = %.4g, x4/a = %d, Q = %.6g",
+        ax.title = @sprintf("q_lat flow-time movie: flow tau = %.4g, fixed slice4 = %d, Q = %.6g",
             sample.tau, options.fixed_slice4, sample.q_total)
         plot_obj[] = VisualizingLQCD.plot_animation_slice!(ax, data, setup, setup.levels;
             a=options.a,
