@@ -239,7 +239,8 @@ function flowtime_frame_map(samples, frame_hold)
     return [Dict(
                 "frame" => frame,
                 "sample_index" => frame_sample_index(frame, frame_hold),
-                "tau" => samples[frame_sample_index(frame, frame_hold)].tau,
+                "t_over_a2" => samples[frame_sample_index(frame, frame_hold)].tau,
+                "source_tau" => samples[frame_sample_index(frame, frame_hold)].tau,
             ) for frame in 1:frame_count]
 end
 
@@ -260,7 +261,7 @@ function render_movie(mode, samples, options)
     fig = Figure(
         size=(options.figure_size, options.figure_size),
         backgroundcolor=theme_settings.figure_background)
-    title = @sprintf("q_lat flow-time movie: flow tau = %.4g, fixed slice4 = %d",
+    title = @sprintf("q_lat flow-time movie: flow t/a^2 = %.4g, fixed slice4 = %d",
         samples[1].tau, options.fixed_slice4)
     ax = Axis3(fig[1, 1]; axis_kwargs(title, setup, theme_settings, camera, options)...)
     limits!(ax, 0, options.a * nx, 0, options.a * ny, 0, options.a * nz)
@@ -274,7 +275,7 @@ function render_movie(mode, samples, options)
     function draw_sample!(sample)
         VisualizingLQCD.delete_plot_obj!(ax, plot_obj[])
         data = @view sample.q[:, :, :, options.fixed_slice4]
-        ax.title = @sprintf("q_lat flow-time movie: flow tau = %.4g, fixed slice4 = %d, Q = %.6g",
+        ax.title = @sprintf("q_lat flow-time movie: flow t/a^2 = %.4g, fixed slice4 = %d, Q = %.6g",
             sample.tau, options.fixed_slice4, sample.q_total)
         plot_obj[] = VisualizingLQCD.plot_animation_slice!(ax, data, setup, setup.levels;
             a=options.a,
@@ -302,7 +303,8 @@ function render_movie(mode, samples, options)
         "created_at" => string(Dates.now(Dates.UTC)),
         "interpretation" => Dict(
             "spacetime" => "Euclidean lattice scalar topological-charge-density field",
-            "frame_sequence" => "gradient flow time tau",
+            "frame_sequence" => "gradient flow time t/a^2",
+            "source_tau_equals_t_over_a2" => true,
             "fixed_euclidean_fourth_direction_slice" => options.fixed_slice4,
             "not_real_time_minkowski_evolution" => true,
         ),
@@ -318,11 +320,12 @@ function render_movie(mode, samples, options)
         ),
         "observable" => Dict(
             "kind" => "q_lat",
-            "normalization" => "Q_tot(tau) = sum_n q_lat(n,tau)",
+            "normalization" => "Q_tot(t) = sum_n q_lat(n,t)",
         ),
         "frame_map" => flowtime_frame_map(samples, options.frame_hold),
         "sample_summary" => [Dict(
-            "tau" => sample.tau,
+            "t_over_a2" => sample.tau,
+            "source_tau" => sample.tau,
             "Q_tot" => sample.q_total,
             "q_abs_maximum" => sample.q_abs_maximum,
             "metadata" => sample.metadata,
@@ -368,7 +371,8 @@ function write_review_html(output_dir, results, options)
         "input_dir = $(options.input_dir)",
         "fixed_slice4 = $(options.fixed_slice4)",
         "render_mode = $(String(options.render_mode))",
-        "frame direction = gradient flow time tau",
+        "frame direction = gradient flow time t/a^2",
+        "source tau metadata is interpreted as t/a^2",
     ), "\n"))
     open(path, "w") do io
         write(io, """
@@ -418,7 +422,7 @@ end
 function print_sample_summary(samples)
     println("selected q_density samples = ", length(samples))
     for sample in samples
-        @printf("tau=%8.4f  Q=% .8e  max|q|=% .8e  file=%s\n",
+        @printf("t/a^2=%8.4f  Q=% .8e  max|q|=% .8e  file=%s\n",
             sample.tau, sample.q_total, sample.q_abs_maximum, basename(sample.path))
     end
     return nothing
@@ -430,7 +434,8 @@ function main(args=ARGS)
         output_dir=arg_value(args, "output-dir", "/private/tmp/VisualizingLQCD-flowtime-q-density"),
         output_name=arg_value(args, "output-name", "flowtime_q_density_slice7.mp4"),
         fixed_slice4=parse(Int, arg_value(args, "fixed-slice4", "7")),
-        tau_list=parse_tau_list(arg_value(args, "tau-list", "")),
+        tau_list=parse_tau_list(arg_value(args, "t-over-a2-list",
+            arg_value(args, "tau-list", ""))),
         tau_tolerance=parse(Float64, arg_value(args, "tau-tolerance", "1.0e-8")),
         stride=parse(Int, arg_value(args, "stride", "1")),
         frame_hold=parse(Int, arg_value(args, "frame-hold", "1")),
