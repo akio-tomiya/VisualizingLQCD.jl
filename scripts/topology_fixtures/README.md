@@ -25,6 +25,14 @@ on a full GLMakie `record` loop.
 topological-density path, but writes one or more movies plus a review HTML page.
 It is a thin wrapper around `VisualizingLQCD.create_animation`, intended for
 small reviewed movie runs after the still-review page looks reasonable.
+
+`render_flowtime_q_density_movie.jl` is a private flow-time review helper for
+GaugefieldsInstantonRadius `q_density/q_improved_tau_*.jld2` outputs. It fixes
+one Euclidean fourth-direction slice and advances movie frames by gradient-flow
+time `tau`, so it should not be interpreted as a fourth-direction slice scan or
+as real-time evolution. The metadata sidecar records the selected `tau` values,
+the fixed `slice4`, the global display thresholds, and `Q_tot(tau)`.
+
 Use `--show-axis-labels false` for README-style orbit movies; it keeps the grid
 and 3D box but avoids axis-label shimmer during rotation.
 Use `--render-theme light` to render the same scene on a white background, or
@@ -69,6 +77,8 @@ Run from the repository root:
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_review.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --render-theme both --slice4 auto --auto-slices 4 --output-dir /private/tmp/VisualizingLQCD-topological-light-theme-review
 
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --camera-motion orbit --frame-mode sequence --nloops 2 --framerate 8 --figure-size 480 --show-render-progress true --output-dir /private/tmp/VisualizingLQCD-topological-config-movie-review
+
+/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --tau-list 0,1,2,4.5,8,12,18,24,30,40,50 --fixed-slice4 7 --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-core --output-name su2_wilson_tau0_50_slice7_core.mp4 --figure-size 440 --framerate 4 --level-quantiles 0.99,0.9995 --color-quantile 0.9995 --show-render-progress false
 ```
 
 The accepted README sample can be reproduced from the same input configuration
