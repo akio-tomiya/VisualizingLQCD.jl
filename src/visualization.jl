@@ -460,22 +460,12 @@ function animation_display_setup_for_gaugefield(U, NX, NY, NZ, NT, NC;
     )
 end
 
-function initialize_animation_gaugefield(NX, NY, NZ, NT, NC;
-    nwing=CURRENT_NWING,
-    condition=CURRENT_GENERATION_INITIAL_CONDITION)
-
-    return Initialize_Gaugefields(NC, nwing, NX, NY, NZ, NT; condition=condition)
+function initialize_animation_gaugefield(NX, NY, NZ, NT, NC; start=:cold)
+    return gauge_configuration((NX, NY, NZ, NT); colors=NC, start=start)
 end
 
-function load_animation_gaugefield(filename, NX, NY, NZ, NT, NC;
-    nwing=CURRENT_NWING,
-    condition=CURRENT_GENERATION_INITIAL_CONDITION)
-
-    U = initialize_animation_gaugefield(NX, NY, NZ, NT, NC;
-        nwing=nwing, condition=condition)
-    ildg = ILDG(filename)
-    load_gaugefield!(U, 1, ildg, [NX, NY, NZ, NT], NC)
-    return U
+function load_animation_gaugefield(filename, NX, NY, NZ, NT, NC)
+    return load_gauge(filename; lattice=(NX, NY, NZ, NT), colors=NC)
 end
 
 function animation_metadata_for_render(; videoname, metadata_filename, filename,
@@ -612,15 +602,6 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     plot_obj = draw_context.plot_obj
     current_slice4 = draw_context.current_slice4
     mesh_cache = draw_context.mesh_cache
-
-    if display_setup.render_kind == :contour
-        dummy_data = zeros(Float64, NX, NY, NZ)
-        plot_obj[] = contour_plot_group!(ax, dummy_data, [levels[1]],
-            display_setup.contour_style;
-            x_physical=scene.x_physical,
-            y_physical=scene.y_physical,
-            z_physical=scene.z_physical)
-    end
 
     function draw_slice!(slice4)
         delete_plot_obj!(ax, plot_obj[])

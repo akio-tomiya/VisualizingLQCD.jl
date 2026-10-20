@@ -1,5 +1,6 @@
 using VisualizingLQCD
 using Gaugefields
+using QCDMeasurements
 using LinearAlgebra
 using Test
 using Wilsonloop
@@ -179,7 +180,7 @@ end
     azimuths = [VisualizingLQCD.camera_azimuth_for_frame(
                     orbit_camera, frame, total_frames) for frame in 1:total_frames]
     frame_step = 2pi / total_frames
-    @test all(diff(azimuths) .≈ frame_step)
+    @test all(Base.diff(azimuths) .≈ frame_step)
     @test azimuths[1] + 2pi - azimuths[end] ≈ frame_step
 end
 
@@ -324,8 +325,7 @@ end
     @test length(initialized_u) == 4
     @test initialized_u[1].NC == 3
     @test initialized_u[1].NV == 16
-    setup_u = VisualizingLQCD.Initialize_Gaugefields(
-        3, 0, 2, 2, 2, 2; condition=VisualizingLQCD.CURRENT_GENERATION_INITIAL_CONDITION)
+    setup_u = gauge_configuration((2, 2, 2, 2); colors=3, start=:cold)
     action_display_result = VisualizingLQCD.animation_display_setup_for_gaugefield(
         setup_u, 2, 2, 2, 2, 3;
         level_target=VisualizingLQCD.LEVEL_TARGET_ACTION_DENSITY_HIGH)
@@ -655,19 +655,17 @@ end
     @test VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_METHOD ==
           VisualizingLQCD.TOPOLOGICAL_CHARGE_METHOD_CLOVER
     @test VisualizingLQCD.validate_topological_charge_method(:clover) == :clover
-    @test_throws ArgumentError VisualizingLQCD.validate_topological_charge_method(:plaquette)
-    @test VisualizingLQCD.validate_topological_temp_count(5) == 5
-    @test_throws ArgumentError VisualizingLQCD.validate_topological_temp_count(4)
+    for method in (:plaquette, :clover, :improved, :bilson_thompson)
+        @test VisualizingLQCD.validate_topological_charge_method(method) == method
+    end
+    @test_throws ArgumentError VisualizingLQCD.validate_topological_charge_method(:rect)
 
     @test VisualizingLQCD.topological_epsilon4(1, 2, 3, 4) == 1
     @test VisualizingLQCD.topological_epsilon4(1, 2, 4, 3) == -1
     @test VisualizingLQCD.topological_epsilon4(1, 1, 2, 3) == 0
     @test_throws ArgumentError VisualizingLQCD.topological_epsilon4(0, 1, 2, 3)
 
-    loops, loop_count = VisualizingLQCD.topological_loopset(:clover)
-    @test loop_count == 4
-    @test length(loops[1, 2]) == 4
-    @test isempty(loops[1, 1])
+    @test length(VisualizingLQCD.topological_epsilon_terms()) == 24
 
     metadata = VisualizingLQCD.topological_charge_density_observable_metadata()
     @test metadata["kind"] == "topological_charge_density"
@@ -676,8 +674,7 @@ end
     @test metadata["positive_negative_density"] == true
 
     NX, NY, NZ, NT, NC = 2, 2, 2, 2, 3
-    U = VisualizingLQCD.Initialize_Gaugefields(
-        NC, 0, NX, NY, NZ, NT; condition=VisualizingLQCD.CURRENT_GENERATION_INITIAL_CONDITION)
+    U = gauge_configuration((NX, NY, NZ, NT); colors=NC, start=:cold)
     density = VisualizingLQCD.topological_charge_density(U, NX, NY, NZ, NT, NC)
     @test size(density) == (NX, NY, NZ, NT)
     @test maximum(abs.(density)) ≈ 0.0 atol = 1e-12
@@ -704,6 +701,20 @@ end
     reference_charge = reference_clover_topological_charge(instanton_u)
     @test density_charge ≈ reference_charge atol = 1e-10
     @test abs(density_charge) > 0.5
+
+    # The per-site densities must sum to the charges of QCDMeasurements.
+    measurement = Topological_charge_measurement(instanton_u;
+        TC_methods=["plaquette", "clover"],
+        improved_topological_charge_definition="both")
+    measured = QCDMeasurements.measure(measurement, instanton_u).value
+    for (method, key) in ((:plaquette, "plaquette"), (:clover, "clover"),
+        (:improved, "clover improved"),
+        (:bilson_thompson, "clover improved bilson-thompson"))
+        method_density = VisualizingLQCD.topological_charge_density(
+            instanton_u, instanton_lattice, instanton_lattice, instanton_lattice,
+            instanton_lattice, instanton_nc; method=method)
+        @test sum(method_density) ≈ measured[key] rtol = 1e-10
+    end
     topological_display_result = VisualizingLQCD.animation_display_setup_for_gaugefield(
         instanton_u,
         instanton_lattice,

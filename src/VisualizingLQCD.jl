@@ -1,5 +1,6 @@
 module VisualizingLQCD
 using Gaugefields
+using QCDMeasurements
 using Wilsonloop
 using LinearAlgebra
 using LaTeXStrings
@@ -11,6 +12,7 @@ using StatsBase
 using ProgressMeter
 
 include("constants.jl")
+include("input.jl")
 include("transforms.jl")
 include("levels.jl")
 include("rendering.jl")
