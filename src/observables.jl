@@ -2,6 +2,29 @@
 
 plaquette_loop(mu::Integer, nu::Integer) = [(mu, +1), (nu, +1), (mu, -1), (nu, -1)]
 
+# Site-local color algebra without slicing out matrices. The summation order
+# matches LinearAlgebra's tr and its small-matrix multiplication, so the values
+# agree with real(tr(A[:, :, site...])) and real(tr(A[:, :, site...] * B[:, :, site...])).
+@inline function site_trace(A, NC, x, y, z, t)
+    s = A[1, 1, x, y, z, t]
+    for i in 2:NC
+        s += A[i, i, x, y, z, t]
+    end
+    return s
+end
+
+@inline function site_trace_product(A, B, NC, x, y, z, t)
+    s = zero(ComplexF64)
+    for i in 1:NC
+        d = A[i, 1, x, y, z, t] * B[1, i, x, y, z, t]
+        for k in 2:NC
+            d += A[i, k, x, y, z, t] * B[k, i, x, y, z, t]
+        end
+        s = i == 1 ? d : s + d
+    end
+    return s
+end
+
 function plaquette_plane_deviation(U, NX, NY, NZ, NT, NC;
     plane=(1, 2),
     loop=plaquette_loop(plane[1], plane[2]),
@@ -13,8 +36,10 @@ function plaquette_plane_deviation(U, NX, NY, NZ, NT, NC;
     Gaugefields.evaluate_gaugelinks!(Uloop, w, U, temps)
 
     raw = zeros(Float64, NX, NY, NZ, NT)
-    for z in 1:NZ, y in 1:NY, x in 1:NX, t in 1:NT
-        raw[x, y, z, t] = 1 - real(tr(Uloop[:, :, x, y, z, t])) / NC
+    Threads.@threads for t in 1:NT
+        for z in 1:NZ, y in 1:NY, x in 1:NX
+            raw[x, y, z, t] = 1 - real(site_trace(Uloop, NC, x, y, z, t)) / NC
+        end
     end
     return raw
 end
@@ -101,19 +126,26 @@ function topological_charge_density(U, NX, NY, NZ, NT, NC;
         method=method, temp_count=temp_count)
     density = zeros(Float64, NX, NY, NZ, NT)
     factor = CURRENT_TOPOLOGICAL_CHARGE_NORMALIZATION / loop_count^2
+    terms = Tuple{Int,Int,Int,Int,Int}[]
     for mu in 1:4, nu in 1:4
         mu == nu && continue
-        field_mu_nu = field_strength[mu, nu]
         for rho in 1:4, sigma in 1:4
             rho == sigma && continue
             epsilon = topological_epsilon4(mu, nu, rho, sigma)
             epsilon == 0 && continue
-            field_rho_sigma = field_strength[rho, sigma]
-            for t in 1:NT, z in 1:NZ, y in 1:NY, x in 1:NX
-                density[x, y, z, t] += factor * epsilon *
-                                       real(tr(field_mu_nu[:, :, x, y, z, t] *
-                                               field_rho_sigma[:, :, x, y, z, t]))
+            push!(terms, (mu, nu, rho, sigma, epsilon))
+        end
+    end
+    # Each site accumulates the terms in the same (mu, nu, rho, sigma) order
+    # as a term-by-term sweep over the lattice would.
+    Threads.@threads for t in 1:NT
+        for z in 1:NZ, y in 1:NY, x in 1:NX
+            acc = 0.0
+            for (mu, nu, rho, sigma, epsilon) in terms
+                acc += factor * epsilon * real(site_trace_product(
+                    field_strength[mu, nu], field_strength[rho, sigma], NC, x, y, z, t))
             end
+            density[x, y, z, t] = acc
         end
     end
     return density
