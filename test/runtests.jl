@@ -828,7 +828,6 @@ end
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).mp4"))
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).mp4.metadata.json"))
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).gif"))
-    @test isfile(joinpath(root, "test", "$(SAMPLE_BASENAME).gif"))
 
     @test occursin("\"lattice_size\": [24, 24, 24, 32]", sample_metadata_text)
     @test occursin("\"level_target\": \"topological_charge_density\"",

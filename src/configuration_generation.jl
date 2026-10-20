@@ -3,9 +3,6 @@
 
 # - A. Tomiya 2025/01/11
 
-#include("header.jl")
-#include("constants.jl")
-
 function heatbath_SU3!(U, NC, temps, β)
     Dim = CURRENT_HEATBATH_DIM
     V = temps[5]

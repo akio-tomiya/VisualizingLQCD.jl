@@ -1,16 +1,5 @@
-#include("header.jl")
-#include("constants.jl")
-
 # - A. Tomiya 2025/01/11
 
-function automatic_level2(plaqs_t)
-    summary = legacy_level_summary(plaqs_t)
-    print_legacy_level_summary(summary)
-    return summary.level, summary.isorange, summary.min, summary.max
-end
-
-GLMakie.activate!()
-# set constants
 const myxlabel = L"$x$ [fm]"
 const myylabel = L"$y$ [fm]"
 const myzlabel = L"$z$ [fm]"
@@ -563,7 +552,6 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     show_render_progress=CURRENT_SHOW_RENDER_PROGRESS,
     show_axis_labels=CURRENT_SHOW_AXIS_LABELS)
 
-    #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
     a = calculate_a(beta)
     scale_factor = a
 
@@ -610,12 +598,6 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     effective_figure_size = render_plan.figure_size
     effective_show_axis_labels = render_plan.show_axis_labels
     cache_active = render_plan.cache_active
-
-    #= To check iso-level, please use here
-    hist_p = histogram(vec(plaqs_t))
-    vline!(hist_p, levels)
-    display(hist_p)
-    =#
 
     scene = initialize_animation_scene(display_setup, theme_settings, camera;
         a=a,
