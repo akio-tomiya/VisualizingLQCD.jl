@@ -733,6 +733,56 @@ end
           size(instanton_density)
 end
 
+@testset "LatticeField and operators" begin
+    L = (4, 4, 4, 4)
+    NC = 3
+    U = gauge_configuration(L; colors=NC, start=:hot, seed=11)
+
+    # Built-in operators wrap the existing observables without changing values.
+    action = measure(ActionDensity(), U)
+    @test action isa LatticeField
+    @test size(action) == L
+    @test action.name == "action_density"
+    @test !action.signed
+    @test action.data == VisualizingLQCD.local_action_density(U, L..., NC)
+    @test size(slice(action, 2)) == L[1:3]
+    @test slice(action, 2) == action.data[:, :, :, 2]
+
+    plaquette = measure(PlaquetteDensity(1, 2), U)
+    @test plaquette.data == VisualizingLQCD.plaquette_plane_deviation(U, L..., NC; plane=(1, 2))
+
+    q = measure(TopologicalChargeDensity(), U)
+    @test q.signed
+    @test q.info["method"] == "clover"
+    @test q.data == VisualizingLQCD.topological_charge_density(U, L..., NC)
+    @test_throws ArgumentError TopologicalChargeDensity(method=:rect)
+
+    # The three user-defined entry points reproduce the built-in definitions.
+    loop_plaquette = measure(LoopDensity([(1, +1), (2, +1), (1, -1), (2, -1)];
+        name="my_plaquette", signed=false) do W
+        1 - real(tr(W)) / size(W, 1)
+    end, U)
+    @test loop_plaquette.name == "my_plaquette"
+    @test loop_plaquette.data ≈ plaquette.data atol = 1e-14
+    @test_throws ArgumentError LoopDensity(W -> 0.0, [(1, +1), (2, +1)])
+
+    site_plaquette = measure(SiteOperator() do ctx, x
+        U1 = link(ctx, 1, x)
+        U2 = link(ctx, 2, neighbor(ctx, x, 1))
+        U3 = link(ctx, 1, neighbor(ctx, x, 2))
+        U4 = link(ctx, 2, x)
+        1 - real(tr(U1 * U2 * U3' * U4')) / 3
+    end, U)
+    @test site_plaquette.data ≈ plaquette.data atol = 1e-14
+
+    clover_q = measure(FieldStrengthDensity() do F
+        -sum(VisualizingLQCD.topological_epsilon4(m, n, r, s) * real(tr(F[m, n] * F[r, s]))
+             for m in 1:4, n in 1:4, r in 1:4, s in 1:4) / (32 * pi^2)
+    end, U)
+    @test clover_q.data ≈ q.data atol = 1e-14
+    @test sum(clover_q) ≈ sum(q) atol = 1e-12
+end
+
 @testset "SU(2) instanton density fixture contracts" begin
     lattice = (16, 16, 16, 16)
     center = (8, 8, 8, 8)
