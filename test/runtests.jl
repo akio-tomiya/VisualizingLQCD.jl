@@ -839,6 +839,38 @@ end
     @test_throws ArgumentError V.legacy_field_and_style(U, :unknown, V.RENDER_STYLE_CURRENT)
 end
 
+@testset "Gradient-flow series contracts" begin
+    V = VisualizingLQCD
+    L = (4, 4, 4, 4)
+    U = gauge_configuration(L; colors=3, start=:hot, seed=13)
+    before = measure(ActionDensity(), U)
+    series = flow_series(U, ActionDensity(); steps=[0, 1, 3], step_size=0.02)
+    @test length(series) == 3
+    @test series.flow_times ≈ [0.0, 0.02, 0.06]
+    @test size(series) == L
+    @test series[1].data == before.data
+    @test measure(ActionDensity(), U).data == before.data   # U is not modified
+    @test sum(series[3]) < sum(series[1])                   # the flow smooths the field
+    @test series.info["steps"] == [0, 1, 3]
+    @test_throws ArgumentError flow_series(U, ActionDensity(); steps=[2, 1])
+    @test_throws ArgumentError flow_series(U, ActionDensity(); steps=Int[])
+
+    manual = FieldSeries([series[1], series[2]], [0.0, 0.02])
+    @test manual.name == "action_density"
+    @test_throws ArgumentError FieldSeries([series[1]], [0.0, 1.0])
+    @test_throws ArgumentError FieldSeries([series[2], series[1]], [0.02, 0.0])
+
+    per_frame = V.flow_display_setups(Blob(), series, :per_frame)
+    first_levels = V.flow_display_setups(Blob(), series, :first)
+    @test per_frame[3].levels != per_frame[1].levels
+    @test all(s.levels == per_frame[1].levels for s in first_levels)
+    @test first_levels[3].display_field == per_frame[3].display_field
+    @test_throws ArgumentError V.flow_display_setups(Blob(), series, :middle)
+    @test V.flow_progress_fraction(series, 1) == 0.0
+    @test V.flow_progress_fraction(series, 3) == 1.0
+    @test occursin("x4=2", V.flow_time_label(series, 2, 2))
+end
+
 @testset "SU(2) instanton density fixture contracts" begin
     lattice = (16, 16, 16, 16)
     center = (8, 8, 8, 8)

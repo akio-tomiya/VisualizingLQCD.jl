@@ -26,6 +26,7 @@ include("metadata.jl")
 include("configuration_generation.jl")
 include("visualization.jl")
 include("render_api.jl")
+include("flow.jl")
 
 function __init__()
     GLMakie.activate!()
