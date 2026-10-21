@@ -1082,7 +1082,7 @@ end
 
 function action_density_blob_plot!(ax, geometry)
     return mesh!(ax, geometry.mesh; color=geometry.colors,
-        shading=FastShading, transparency=false), geometry.info
+        shading=true, transparency=false), geometry.info
 end
 
 function action_density_blob_plot!(ax, data, setup; a, lattice_size)
@@ -1164,11 +1164,11 @@ function topological_charge_volume_plot!(ax, geometry)
     objects = Any[]
     if geometry.positive !== nothing
         push!(objects, mesh!(ax, geometry.positive.mesh; color=geometry.positive.colors,
-            shading=FastShading, transparency=geometry.transparency))
+            shading=true, transparency=geometry.transparency))
     end
     if geometry.negative !== nothing
         push!(objects, mesh!(ax, geometry.negative.mesh; color=geometry.negative.colors,
-            shading=FastShading, transparency=geometry.transparency))
+            shading=true, transparency=geometry.transparency))
     end
     return objects, geometry.info
 end
