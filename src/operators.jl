@@ -36,10 +36,11 @@ end
 """
     TopologicalChargeDensity(; method=:clover)
 
-q(x) = -1/(32π²) ε_{μνρσ} tr F_{μν} F_{ρσ}, with field strengths from the loop
-sets of QCDMeasurements.jl. `method` is `:plaquette`, `:clover`, `:improved`
-(Alexandrou et al. 2015), or `:bilson_thompson`. The sum over sites equals
-the charge of `QCDMeasurements.Topological_charge_measurement`.
+q(x) = -1/(32π²) ε_{μνρσ} tr F_{μν} F_{ρσ} from
+`QCDMeasurements.topological_charge_density`. `method` is `:plaquette`,
+`:clover`, `:alexandrou` (Alexandrou et al. 2015; `:improved` is an alias), or
+`:bilson_thompson`. The sum over sites equals the charge of
+`QCDMeasurements.Topological_charge_measurement`.
 """
 struct TopologicalChargeDensity <: AbstractLatticeOperator
     method::Symbol
@@ -55,19 +56,21 @@ function measure(op::TopologicalChargeDensity, U)
 end
 
 """
-    ActionDensity(; planes=all six planes)
+    ActionDensity(; method=:plaquette)
 
-s(x) = (1/number of planes) Σ_{μ<ν} (1 - Re tr U_{μν}(x) / Nc).
+E(x) = 2 Σ_{μ<ν} Re tr(1 - U_{μν}(x)) from `QCDMeasurements.action_density`
+(`method=:clover` uses the clover field strength). Its volume average is the
+gradient-flow energy density. Use `PlaquetteDensity(μ, ν)` for one plane.
 """
 struct ActionDensity <: AbstractLatticeOperator
-    planes::Vector{Tuple{Int,Int}}
+    method::Symbol
+    ActionDensity(method::Symbol) = new(validate_action_density_method(method))
 end
-ActionDensity(; planes=CURRENT_PLAQUETTE_PLANES_4D) = ActionDensity(collect(planes))
+ActionDensity(; method::Symbol=:plaquette) = ActionDensity(method)
 
 function measure(op::ActionDensity, U)
-    data = local_action_density(U, lattice_extents(U)..., num_colors(U); planes=op.planes)
-    return LatticeField(data; name="action_density",
-        info=local_action_density_observable_metadata(planes=op.planes))
+    return LatticeField(action_density(U; method=op.method); name="action_density",
+        info=action_density_observable_metadata(method=op.method))
 end
 
 """

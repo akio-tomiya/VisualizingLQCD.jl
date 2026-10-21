@@ -60,13 +60,23 @@ end
 const TOPOLOGICAL_CHARGE_METHODS = (
     TOPOLOGICAL_CHARGE_METHOD_PLAQUETTE,
     TOPOLOGICAL_CHARGE_METHOD_CLOVER,
-    TOPOLOGICAL_CHARGE_METHOD_IMPROVED,
+    TOPOLOGICAL_CHARGE_METHOD_ALEXANDROU,
     TOPOLOGICAL_CHARGE_METHOD_BILSON_THOMPSON,
 )
 
+# :improved was the name used before QCDMeasurements 1.0.1; keep it as an alias.
 function validate_topological_charge_method(method::Symbol)
+    method == TOPOLOGICAL_CHARGE_METHOD_IMPROVED && return TOPOLOGICAL_CHARGE_METHOD_ALEXANDROU
     method in TOPOLOGICAL_CHARGE_METHODS ||
         throw(ArgumentError("unsupported topological charge method: $method"))
+    return method
+end
+
+const ACTION_DENSITY_METHODS = (:plaquette, :clover)
+
+function validate_action_density_method(method::Symbol)
+    method in ACTION_DENSITY_METHODS ||
+        throw(ArgumentError("unsupported action density method: $method"))
     return method
 end
 
@@ -111,55 +121,27 @@ function topological_field_strength_ta(U, loopset::AbstractString)
     return field_strength, loop_count
 end
 
-# factor * sum_{mu nu rho sigma} epsilon * real tr(A[mu, nu] B[rho, sigma]) at each site.
-# Each site accumulates the terms in the same (mu, nu, rho, sigma) order as a
-# term-by-term sweep over the lattice would.
-function topological_contraction(A, B, NX, NY, NZ, NT, NC, factor)
-    terms = topological_epsilon_terms()
-    density = zeros(Float64, NX, NY, NZ, NT)
-    Threads.@threads for t in 1:NT
-        for z in 1:NZ, y in 1:NY, x in 1:NX
-            acc = 0.0
-            for (mu, nu, rho, sigma, epsilon) in terms
-                acc += factor * epsilon * real(site_trace_product(
-                    A[mu, nu], B[rho, sigma], NC, x, y, z, t))
-            end
-            density[x, y, z, t] = acc
-        end
-    end
-    return density
-end
-
+# Per-site densities come from the public API of QCDMeasurements (>= 1.0.1),
+# which sums to Topological_charge_measurement and runs on CPU, GPU, and MPI.
 function topological_charge_density(U, NX, NY, NZ, NT, NC;
     method=CURRENT_TOPOLOGICAL_CHARGE_METHOD)
 
     validated_method = validate_topological_charge_method(method)
-    normalization = CURRENT_TOPOLOGICAL_CHARGE_NORMALIZATION
-    if validated_method == TOPOLOGICAL_CHARGE_METHOD_PLAQUETTE
-        plaq, n = topological_field_strength_ta(U, "plaq")
-        return topological_contraction(plaq, plaq, NX, NY, NZ, NT, NC, normalization / n^2)
-    end
+    density = QCDMeasurements.topological_charge_density(U; method=String(validated_method))
+    size(density) == (NX, NY, NZ, NT) ||
+        throw(ArgumentError("density size $(size(density)) does not match the lattice"))
+    return density
+end
 
-    clover, n_clover = topological_field_strength_ta(U, "clover")
-    q_clover = topological_contraction(clover, clover, NX, NY, NZ, NT, NC,
-        normalization / n_clover^2)
-    validated_method == TOPOLOGICAL_CHARGE_METHOD_CLOVER && return q_clover
+"""
+    action_density(U; method=:plaquette)
 
-    rect, n_rect = topological_field_strength_ta(U, "rect")
-    q_rect = topological_contraction(rect, rect, NX, NY, NZ, NT, NC,
-        normalization / n_rect^2)
-    if validated_method == TOPOLOGICAL_CHARGE_METHOD_IMPROVED
-        # Alexandrou, Athenodorou, and Jansen, Phys. Rev. D 92, 125014 (2015),
-        # as in QCDMeasurements.calculate_topological_charge_improved.
-        return @. (5 / 3) * q_clover - (1 / 12) * (2 * q_rect)
-    end
-
-    # Bilson-Thompson et al., Ann. Phys. 304, 1 (2003), as in
-    # QCDMeasurements.calculate_topological_charge_bilson_thompson.
-    cross = topological_contraction(rect, clover, NX, NY, NZ, NT, NC,
-        normalization / n_clover^2)
-    c, r = 5 / 3, -1 / 6
-    return @. c^2 * q_clover + 2 * c * r * cross + 4 * r^2 * q_rect
+E(x) = 2 Σ_{μ<ν} Re tr(1 - U_{μν}(x)) (plaquette) or its clover version,
+from QCDMeasurements.action_density; the volume average is the gradient-flow
+energy density.
+"""
+function action_density(U; method::Symbol=:plaquette)
+    return QCDMeasurements.action_density(U; method=String(validate_action_density_method(method)))
 end
 
 topological_charge_from_density(density) = sum(density)
@@ -189,6 +171,17 @@ function local_action_density_observable_metadata(; planes=CURRENT_PLAQUETTE_PLA
     )
 end
 
+function action_density_observable_metadata(; method=:plaquette)
+    validated_method = validate_action_density_method(method)
+    return Dict(
+        "kind" => "action_density",
+        "definition" => "2 * sum_mu_lt_nu Re tr(1 - U_mu_nu)",
+        "method" => String(validated_method),
+        "normalization" => "volume average equals the gradient-flow energy density E",
+        "source" => "QCDMeasurements.action_density",
+    )
+end
+
 function topological_charge_density_observable_metadata(;
     method=CURRENT_TOPOLOGICAL_CHARGE_METHOD)
     validated_method = validate_topological_charge_method(method)
@@ -196,10 +189,7 @@ function topological_charge_density_observable_metadata(;
         "kind" => "topological_charge_density",
         "definition" => "-1 / (32 * pi^2) * epsilon_mu_nu_rho_sigma * tr(F_mu_nu * F_rho_sigma)",
         "method" => String(validated_method),
-        "loopsets" => validated_method == TOPOLOGICAL_CHARGE_METHOD_PLAQUETTE ? ["plaq"] :
-                       validated_method == TOPOLOGICAL_CHARGE_METHOD_CLOVER ? ["clover"] :
-                       ["clover", "rect"],
-        "field_strength_source" => "QCDMeasurements.calc_UμνTA!",
+        "source" => "QCDMeasurements.topological_charge_density",
         "normalization" => "-1/(32*pi^2)",
         "signed" => true,
         "positive_negative_density" => true,

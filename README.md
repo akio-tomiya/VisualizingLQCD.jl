@@ -76,14 +76,14 @@ configuration with `flow_steps` steps of the Wilson gradient flow (step size
 
 | Operator | Definition |
 | --- | --- |
-| `TopologicalChargeDensity(method=:clover)` | q(x) = −1/(32π²) ε_{μνρσ} tr F_{μν} F_{ρσ}; `method` is `:plaquette`, `:clover`, `:improved` (Alexandrou et al. 2015), or `:bilson_thompson` |
-| `ActionDensity()` | mean over the six planes of 1 − Re tr U_{μν}(x)/N_c |
+| `TopologicalChargeDensity(method=:clover)` | q(x) = −1/(32π²) ε_{μνρσ} tr F_{μν} F_{ρσ}; `method` is `:plaquette`, `:clover`, `:alexandrou` (Alexandrou et al. 2015), or `:bilson_thompson` |
+| `ActionDensity(method=:plaquette)` | E(x) = 2 Σ_{μ<ν} Re tr(1 − U_{μν}(x)), or its clover version; the volume average is the gradient-flow energy density |
 | `PlaquetteDensity(μ, ν)` | 1 − Re tr U_{μν}(x)/N_c for one plane |
 
-The field strengths use the loop sets of
-[QCDMeasurements.jl](https://github.com/akio-tomiya/QCDMeasurements.jl), so the
-sum of `TopologicalChargeDensity` over the lattice equals the charge of
-`QCDMeasurements.Topological_charge_measurement`. `measure` extends
+The topological charge and action densities come from
+[QCDMeasurements.jl](https://github.com/akio-tomiya/QCDMeasurements.jl)
+(≥ 1.0.1), so the sum of `TopologicalChargeDensity` over the lattice equals the
+charge of `QCDMeasurements.Topological_charge_measurement`. `measure` extends
 `QCDMeasurements.measure`, so both packages can be loaded together.
 
 ### Your own operators

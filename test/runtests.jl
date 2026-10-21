@@ -655,9 +655,10 @@ end
     @test VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_METHOD ==
           VisualizingLQCD.TOPOLOGICAL_CHARGE_METHOD_CLOVER
     @test VisualizingLQCD.validate_topological_charge_method(:clover) == :clover
-    for method in (:plaquette, :clover, :improved, :bilson_thompson)
+    for method in (:plaquette, :clover, :alexandrou, :bilson_thompson)
         @test VisualizingLQCD.validate_topological_charge_method(method) == method
     end
+    @test VisualizingLQCD.validate_topological_charge_method(:improved) == :alexandrou
     @test_throws ArgumentError VisualizingLQCD.validate_topological_charge_method(:rect)
 
     @test VisualizingLQCD.topological_epsilon4(1, 2, 3, 4) == 1
@@ -744,7 +745,11 @@ end
     @test size(action) == L
     @test action.name == "action_density"
     @test !action.signed
-    @test action.data == VisualizingLQCD.local_action_density(U, L..., NC)
+    # E = 2 sum_{mu<nu} Re tr(1 - U_munu) = 2 Nc * 6 * (mean over planes of 1 - Re tr U / Nc)
+    @test action.data ≈ (2 * NC * 6) .* VisualizingLQCD.local_action_density(U, L..., NC) rtol = 1e-12
+    @test action.info["source"] == "QCDMeasurements.action_density"
+    @test measure(ActionDensity(method=:clover), U).info["method"] == "clover"
+    @test_throws ArgumentError ActionDensity(method=:rect)
     @test size(slice(action, 2)) == L[1:3]
     @test slice(action, 2) == action.data[:, :, :, 2]
 
@@ -755,6 +760,7 @@ end
     @test q.signed
     @test q.info["method"] == "clover"
     @test q.data == VisualizingLQCD.topological_charge_density(U, L..., NC)
+    @test q.data == QCDMeasurements.topological_charge_density(U; method="clover")
     @test_throws ArgumentError TopologicalChargeDensity(method=:rect)
 
     # The three user-defined entry points reproduce the built-in definitions.
