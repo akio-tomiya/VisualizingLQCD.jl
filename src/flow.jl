@@ -78,6 +78,123 @@ function flow_series(U, op::AbstractLatticeOperator;
     return FieldSeries(fields, step_list .* Float64(step_size); info=info)
 end
 
+const FLOW_TIME_METADATA_KEYS = (:tau, :t_over_a2)
+
+function flow_time_from_metadata(metadata::NamedTuple)
+    for key in FLOW_TIME_METADATA_KEYS
+        haskey(metadata, key) && return Float64(metadata[key])
+    end
+    return nothing
+end
+
+function flow_time_from_metadata(metadata::AbstractDict)
+    for key in FLOW_TIME_METADATA_KEYS, k in (key, String(key))
+        haskey(metadata, k) && return Float64(metadata[k])
+    end
+    return nothing
+end
+
+flow_time_from_metadata(metadata) = nothing
+
+function flow_time_from_filename(path::AbstractString)
+    m = match(r"tau_([0-9]+(?:p[0-9]+)?)", basename(path))
+    m === nothing && throw(ArgumentError("could not infer the flow time from $(basename(path))"))
+    return parse(Float64, replace(m.captures[1], "p" => "."))
+end
+
+metadata_dict(metadata::Union{NamedTuple,AbstractDict}) =
+    Dict{String,Any}(String(k) => v for (k, v) in pairs(metadata))
+metadata_dict(metadata) = Dict{String,Any}("raw" => string(metadata))
+
+"""
+    load_field_series(source; dataset="q", name="topological_charge_density",
+                      signed=true, flow_times=nothing, tolerance=1e-8)
+
+Read one density per JLD2 file into a [`FieldSeries`](@ref). `source` is a
+directory (all `*.jld2` files in it) or a list of files. Each file holds a 4D
+array under `dataset` (a 5D array with a singleton first axis is also
+accepted). The flow time `t/a²` comes from `metadata.tau` (or `t_over_a2`)
+when present, otherwise from a `tau_12p5`-style part of the file name.
+`flow_times` keeps only the files nearest to the given times.
+"""
+function load_field_series(source; dataset::AbstractString="q",
+    name::AbstractString="topological_charge_density", signed::Bool=true,
+    flow_times=nothing, tolerance::Real=1e-8)
+
+    paths = if source isa AbstractString
+        isdir(source) || throw(ArgumentError("directory not found: $source"))
+        sort(filter(endswith(".jld2"), readdir(source; join=true)))
+    else
+        collect(String, source)
+    end
+    isempty(paths) && throw(ArgumentError("no JLD2 files in $source"))
+
+    samples = map(paths) do path
+        data = JLD2.load(path)
+        haskey(data, dataset) || throw(ArgumentError("$path has no dataset $dataset"))
+        values = Array{Float64}(data[dataset])
+        if ndims(values) == 5
+            size(values, 1) == 1 ||
+                throw(ArgumentError("5D data in $path should have a singleton first axis"))
+            values = values[1, :, :, :, :]
+        end
+        ndims(values) == 4 || throw(ArgumentError("data in $path should be 4D"))
+        metadata = get(data, "metadata", NamedTuple())
+        t = flow_time_from_metadata(metadata)
+        t === nothing && (t = flow_time_from_filename(path))
+        (path=path, flow_time=t, values=values, metadata=metadata_dict(metadata))
+    end
+    sort!(samples; by=sample -> sample.flow_time)
+
+    if flow_times !== nothing
+        available = [sample.flow_time for sample in samples]
+        samples = map(collect(flow_times)) do t
+            distance, index = findmin(abs.(available .- t))
+            distance <= tolerance ||
+                throw(ArgumentError("no file with t/a^2 = $t (nearest $(available[index]))"))
+            samples[index]
+        end
+        sort!(samples; by=sample -> sample.flow_time)
+    end
+
+    fields = [LatticeField(sample.values; name=name, signed=signed, info=Dict{String,Any}(
+        "kind" => "loaded_density", "name" => name, "source_file" => sample.path,
+        "dataset" => dataset, "file_metadata" => sample.metadata)) for sample in samples]
+    info = Dict{String,Any}(
+        "kind" => "loaded_flow_series",
+        "dataset" => dataset,
+        "files" => [sample.path for sample in samples],
+        "observable" => Dict{String,Any}("kind" => "loaded_density", "name" => name),
+    )
+    return FieldSeries(fields, [sample.flow_time for sample in samples]; name=name, info=info)
+end
+
+"""
+    resample(series, flow_times)
+
+Linearly interpolate a `FieldSeries` in flow time, for example to make a
+movie of fixed length with evenly spaced flow times:
+`resample(series, range(first(series.flow_times), last(series.flow_times); length=300))`.
+"""
+function resample(series::FieldSeries, flow_times)
+    times = series.flow_times
+    targets = Float64.(collect(flow_times))
+    all(t -> first(times) <= t <= last(times), targets) ||
+        throw(ArgumentError("resample times should lie in [$(first(times)), $(last(times))]"))
+    fields = map(targets) do t
+        exact = findfirst(s -> isapprox(s, t; atol=1e-10), times)
+        exact === nothing || return series.fields[exact]
+        left = clamp(searchsortedlast(times, t), 1, length(times) - 1)
+        w = (t - times[left]) / (times[left + 1] - times[left])
+        a, b = series.fields[left], series.fields[left + 1]
+        LatticeField((1 - w) .* a.data .+ w .* b.data; name=a.name, signed=a.signed,
+            info=merge(a.info, Dict{String,Any}("interpolated_between" =>
+                [times[left], times[left + 1]], "right_weight" => w)))
+    end
+    info = merge(series.info, Dict{String,Any}("resampled" => true))
+    return FieldSeries(fields, targets; name=series.name, info=info)
+end
+
 """
     FlowSweep(; slice=1, hold=1, levels=:per_frame)
 
@@ -255,4 +372,4 @@ function movie(path::AbstractString, series::FieldSeries;
     return finalize_animation_output(path, metadata_filename, metadata)
 end
 
-export FieldSeries, flow_series, FlowSweep
+export FieldSeries, flow_series, load_field_series, resample, FlowSweep

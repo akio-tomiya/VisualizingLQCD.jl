@@ -3,6 +3,7 @@ using Gaugefields
 using QCDMeasurements
 import QCDMeasurements: measure
 using StaticArrays
+import JLD2
 using Wilsonloop
 using LinearAlgebra
 using LaTeXStrings

@@ -26,34 +26,22 @@ topological-density path, but writes one or more movies plus a review HTML page.
 It is a thin wrapper around `VisualizingLQCD.create_animation`, intended for
 small reviewed movie runs after the still-review page looks reasonable.
 
-`render_flowtime_q_density_movie.jl` is a private flow-time review helper for
-GaugefieldsInstantonRadius `q_density/q_improved_tau_*.jld2` outputs. It fixes
-one Euclidean fourth-direction slice and advances movie frames by gradient-flow
-time `t/a^2`, so it should not be interpreted as a fourth-direction slice scan
-or as real-time evolution. The input metadata calls this dimensionless value
-`tau`; the movie label and sidecar report it as `t/a^2`. The metadata sidecar
-records the selected `t/a^2` values, the fixed `slice4`, the global display
-thresholds, and `Q_tot(t)`.
+Flow-time movies are part of the package API. To render densities saved per
+flow time (for example GaugefieldsInstantonRadius `q_density/q_improved_tau_*.jld2`
+outputs), read them into a `FieldSeries` and use `FlowSweep`:
 
-The flow-time helper keeps the default raw-density display unless explicitly
-switched with `--display-normalization per-frame-peak`. In that mode each frame
-is rendered as `q_lat/q_max(t)` with a fixed normalized isosurface level, while
-`--normalization-floor-fraction` prevents a nearly disappeared lump from being
-renormalized into visible noise. This is a display diagnostic only; the sidecar
-metadata still records the raw `Q_tot(t)` and raw `max|q|`.
+```julia
+series = load_field_series("path/to/q_density")             # t/a^2 from metadata.tau or the file name
+series = resample(series, range(0, 50; length=600))          # optional: evenly spaced flow times
+movie("q_flow.mp4", series; frames=FlowSweep(slice=7), figure_size=(440, 440))
+```
 
-For collapsing Wilson-flow lumps, prefer
-`--level-strategy positive-charge-fraction`: on the displayed three-dimensional
-slice it chooses the highest-density positive region carrying a fixed fraction
-of the positive slice charge. With the default `--charge-fraction-fade true`,
-the mesh opacity is the raw positive slice charge divided by its initial value,
-so a disappearing lump fades instead of being re-amplified by a tiny peak.
-Use `--charge-fraction-fade false --visibility-gate topological-sector` when the
-goal is an opaque shape diagnostic: frames are rendered only while `Q_tot` is
-closer to the requested topological sector than to a neighboring integer sector.
-Use `--duration-seconds` to render a fixed wall-clock movie duration at the
-requested framerate. The helper linearly interpolates stored `q_density` frames
-in flow time and records that interpolation in the metadata sidecar.
+The movie fixes one Euclidean fourth-direction slice and advances frames by
+gradient-flow time `t/a^2`; it is neither a fourth-direction slice scan nor
+real-time evolution. The earlier standalone helper
+`render_flowtime_q_density_movie.jl` (with per-frame-peak normalization,
+positive-charge-fraction levels, and a topological-sector visibility gate) was
+removed in favor of this API; it remains in the git history.
 
 Use `--show-axis-labels false` for README-style orbit movies; it keeps the grid
 and 3D box but avoids axis-label shimmer during rotation.
@@ -100,21 +88,7 @@ Run from the repository root:
 
 /Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_topological_density_config_movie.jl --nx 24 --ny 24 --nz 24 --nt 32 --nc 3 --beta 6.0 --input /Users/akio/Dropbox/configuration_gauge/Conf24242432beta6.0.ildg --render-mode volume --camera-motion orbit --frame-mode sequence --nloops 2 --framerate 8 --figure-size 480 --show-render-progress true --output-dir /private/tmp/VisualizingLQCD-topological-config-movie-review
 
-/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --t-over-a2-list 0,1,2,4.5,8,12,18,24,30,40,50 --fixed-slice4 7 --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-core --output-name su2_wilson_t0_50_slice7_core.mp4 --figure-size 440 --framerate 4 --level-quantiles 0.99,0.9995 --color-quantile 0.9995 --show-render-progress false
-
-/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --t-over-a2-list 0,1,2,4.5,8,12,18,24,30,40,50 --fixed-slice4 7 --display-normalization per-frame-peak --normalized-body-level 0.25 --normalization-floor-fraction 1.0e-3 --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-qoverqmax --output-name su2_wilson_t0_50_slice7_qoverqmax.mp4 --figure-size 440 --framerate 4 --show-render-progress false
-
-/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --t-over-a2-list 0,1,2,4.5,8,12,18,24,30,40,50 --fixed-slice4 7 --level-strategy positive-charge-fraction --charge-fraction 0.50 --charge-fraction-fade true --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-charge-hdr --output-name su2_wilson_t0_50_slice7_charge_hdr50.mp4 --figure-size 440 --framerate 4 --show-render-progress false
-
-/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --t-over-a2-list 0,1,2,4.5,8,12,18,24,30,40,50 --fixed-slice4 7 --level-strategy positive-charge-fraction --charge-fraction 0.50 --charge-fraction-fade false --visibility-gate topological-sector --target-topological-charge 1 --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-charge-hdr-sector --output-name su2_wilson_t0_50_slice7_charge_hdr50_sector.mp4 --figure-size 440 --framerate 4 --show-render-progress false
-
-/Users/akio/.juliaup/bin/julia --project=. scripts/topology_fixtures/render_flowtime_q_density_movie.jl --fixed-slice4 7 --level-strategy positive-charge-fraction --charge-fraction 0.50 --charge-fraction-fade false --visibility-gate topological-sector --target-topological-charge 1 --duration-seconds 25 --output-dir /private/tmp/VisualizingLQCD-flowtime-q-density-wilson-charge-hdr-sector-25s --output-name su2_wilson_t0_50_slice7_charge_hdr50_sector_25s_24fps.mp4 --figure-size 440 --framerate 24 --show-render-progress false
 ```
-
-The flow-time movie renderer adds a compact in-frame progress strip by default.
-The strip uses fixed-width decimal formatting for `t/a^2`, so the upper text
-does not shift when the number of digits changes. Disable it with
-`--show-flow-progress-bar false` when a bare `Axis3` title is preferred.
 
 The accepted README sample can be reproduced from the same input configuration
 with the following reviewed settings:

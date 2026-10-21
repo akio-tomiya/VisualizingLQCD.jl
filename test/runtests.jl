@@ -871,6 +871,35 @@ end
     @test occursin("x4=2", V.flow_time_label(series, 2, 2))
 end
 
+@testset "Loading flow series from JLD2" begin
+    dir = mktempdir()
+    L = (2, 2, 2, 3)
+    q0, q1, q2 = fill(0.0, L), fill(1.0, L), fill(4.0, L)
+    VisualizingLQCD.JLD2.jldsave(joinpath(dir, "b.jld2"); q=q1, metadata=(tau=1.0,))
+    VisualizingLQCD.JLD2.jldsave(joinpath(dir, "density_tau_0p0.jld2"); q=q0)
+    VisualizingLQCD.JLD2.jldsave(joinpath(dir, "c.jld2"); q=reshape(q2, 1, L...),
+        metadata=Dict("tau" => 3.0))
+    series = load_field_series(dir)
+    @test series.flow_times == [0.0, 1.0, 3.0]
+    @test series[2].data == q1
+    @test series[3].data == q2
+    @test series[1].signed
+    @test series.name == "topological_charge_density"
+    @test length(series.info["files"]) == 3
+
+    picked = load_field_series(dir; flow_times=[3.0, 0.0])
+    @test picked.flow_times == [0.0, 3.0]
+    @test_throws ArgumentError load_field_series(dir; flow_times=[2.0])
+    @test_throws ArgumentError load_field_series(joinpath(dir, "missing"))
+
+    sorted = load_field_series(dir; flow_times=[0.0, 3.0])
+    fine = resample(sorted, [0.0, 1.5, 3.0])
+    @test fine.flow_times == [0.0, 1.5, 3.0]
+    @test fine[2].data ≈ fill(2.0, L)
+    @test fine[1].data == q0
+    @test_throws ArgumentError resample(sorted, [4.0])
+end
+
 @testset "SU(2) instanton density fixture contracts" begin
     lattice = (16, 16, 16, 16)
     center = (8, 8, 8, 8)
