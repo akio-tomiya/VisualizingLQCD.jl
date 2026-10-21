@@ -783,6 +783,62 @@ end
     @test sum(clover_q) ≈ sum(q) atol = 1e-12
 end
 
+@testset "Rendering API contracts" begin
+    V = VisualizingLQCD
+    L = (4, 4, 4, 4)
+    U = gauge_configuration(L; colors=3, start=:hot, seed=12)
+    action = measure(ActionDensity(), U)
+    q = measure(TopologicalChargeDensity(), U)
+
+    @test V.default_style(action) isa Blob
+    @test V.default_style(q) isa SignedVolume
+    @test V.render_style_symbol(Blob()) == V.RENDER_STYLE_ACTION_DENSITY_BLOB
+    @test V.render_style_symbol(SignedContour()) == V.RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED
+    @test V.render_style_symbol(RawIsosurface(thermal=true)) == V.RENDER_STYLE_PLAQUETTE_THERMAL
+    @test V.render_style_symbol(LogIsosurface()) == V.RENDER_STYLE_CURRENT
+
+    # Each style reuses the existing display setup unchanged.
+    @test V.display_setup(Blob(), action.data).levels ==
+          V.action_density_blob_display_setup(action.data).levels
+    @test V.display_setup(SignedVolume(), q.data).render_kind == :mesh
+    @test V.display_setup(SignedContour(), q.data).render_kind == :contour
+    @test V.display_setup(SignedContour(preset=:core), q.data).levels ==
+          V.topological_charge_display_level_setup(q.data; style_preset=:core).levels
+    plaquette = measure(PlaquetteDensity(1, 2), U)
+    @test V.display_setup(LogIsosurface(), plaquette.data).levels ==
+          V.plaquette_display_level_setup(plaquette.data).levels
+
+    @test V.frame_arguments(SliceSweep()).frame_mode == V.FRAME_MODE_SEQUENCE
+    @test V.frame_arguments(SliceSweep(hold=3)).slice_hold_frames == 3
+    @test V.frame_arguments(FixedSlice(2)).frame_mode == V.FRAME_MODE_FIXED
+    @test V.frame_arguments(FixedSlice(2)).fixed_slice4 == 2
+    @test V.camera_settings(:mesh, Orbit(turns=2.0)).motion == V.CAMERA_MOTION_ORBIT
+    @test V.camera_settings(:mesh, Orbit(turns=2.0)).orbit_turns == 2.0
+    @test V.camera_settings(:contour, StaticCamera()).azimuth === nothing
+
+    @test V.resolve_spacing(nothing, nothing) == (a=1.0, length_unit=:lattice)
+    @test V.resolve_spacing(0.1, nothing) == (a=0.1, length_unit=:fm)
+    @test V.resolve_spacing(nothing, 6.0).a ≈ V.calculate_a(6.0)
+    @test V.axis_labels(:fm) == (V.myxlabel, V.myylabel, V.myzlabel)
+    @test_throws ArgumentError V.axis_labels(:inch)
+
+    @test V.default_title(action, V.display_setup(Blob(), action.data)) ==
+          V.ACTION_DENSITY_BLOB_MOVIE_TITLE
+    my_field = LatticeField(action.data; name="my_loop_density")
+    @test V.default_title(my_field, V.display_setup(Blob(), my_field.data)) == "My loop density"
+
+    legacy = V.legacy_field_and_style(U, V.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY,
+        V.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME; topological_style_preset=:wide)
+    @test legacy.style isa SignedVolume
+    @test legacy.style.preset == :wide
+    @test legacy.field.data == q.data
+    @test V.legacy_field_and_style(U, V.LEVEL_TARGET_RAW_HIGH,
+        V.RENDER_STYLE_PLAQUETTE_THERMAL).style.thermal
+    @test_throws ArgumentError V.legacy_field_and_style(U,
+        V.LEVEL_TARGET_ACTION_DENSITY_HIGH, V.RENDER_STYLE_CURRENT)
+    @test_throws ArgumentError V.legacy_field_and_style(U, :unknown, V.RENDER_STYLE_CURRENT)
+end
+
 @testset "SU(2) instanton density fixture contracts" begin
     lattice = (16, 16, 16, 16)
     center = (8, 8, 8, 8)

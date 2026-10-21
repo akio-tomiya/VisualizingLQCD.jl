@@ -25,6 +25,7 @@ include("instanton_fixtures.jl")
 include("metadata.jl")
 include("configuration_generation.jl")
 include("visualization.jl")
+include("render_api.jl")
 
 function __init__()
     GLMakie.activate!()
