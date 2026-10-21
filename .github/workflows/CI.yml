@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['1.11', '1.12']
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
+      - name: Install an X server for GLMakie
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: Run tests
+        env:
+          JULIA_NUM_THREADS: 2
+        run: xvfb-run -s '-screen 0 1024x768x24' julia --project -e 'using Pkg; Pkg.test()'
