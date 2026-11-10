@@ -1,9 +1,11 @@
 module VisualizingLQCD
 using Gaugefields
+using QCDMeasurements
+import QCDMeasurements: measure
+using StaticArrays
+import JLD2
 using Wilsonloop
 using LinearAlgebra
-using Plots
-using Interpolations
 using LaTeXStrings
 using Printf
 using Makie
@@ -11,17 +13,24 @@ using GLMakie
 using Statistics
 using StatsBase
 using ProgressMeter
-using ColorSchemes
 
 include("constants.jl")
+include("input.jl")
 include("transforms.jl")
 include("levels.jl")
 include("rendering.jl")
 include("observables.jl")
+include("field.jl")
+include("operators.jl")
 include("instanton_fixtures.jl")
 include("metadata.jl")
 include("configuration_generation.jl")
 include("visualization.jl")
-# Write your package code here.
+include("render_api.jl")
+include("flow.jl")
+
+function __init__()
+    GLMakie.activate!()
+end
 
 end

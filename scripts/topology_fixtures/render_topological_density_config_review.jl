@@ -370,12 +370,8 @@ slice_abs_maximum = $(result.slice_abs_maximum)</pre>
 end
 
 function load_topological_density(options)
-    U = VisualizingLQCD.Initialize_Gaugefields(options.nc, VisualizingLQCD.CURRENT_NWING,
-        options.nx, options.ny, options.nz, options.nt;
-        condition=VisualizingLQCD.CURRENT_GENERATION_INITIAL_CONDITION)
-    ildg = VisualizingLQCD.ILDG(options.input)
-    VisualizingLQCD.load_gaugefield!(
-        U, 1, ildg, [options.nx, options.ny, options.nz, options.nt], options.nc)
+    U = load_gauge(options.input;
+        lattice=(options.nx, options.ny, options.nz, options.nt), colors=options.nc)
     return VisualizingLQCD.topological_charge_density(
         U, options.nx, options.ny, options.nz, options.nt, options.nc)
 end

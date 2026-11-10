@@ -1,19 +1,15 @@
-#include("header.jl")
-#include("constants.jl")
-
 # - A. Tomiya 2025/01/11
 
-function automatic_level2(plaqs_t)
-    summary = legacy_level_summary(plaqs_t)
-    print_legacy_level_summary(summary)
-    return summary.level, summary.isorange, summary.min, summary.max
-end
-
-GLMakie.activate!()
-# set constants
 const myxlabel = L"$x$ [fm]"
 const myylabel = L"$y$ [fm]"
 const myzlabel = L"$z$ [fm]"
+const lattice_unit_labels = (L"$x/a$", L"$y/a$", L"$z/a$")
+
+function axis_labels(length_unit::Symbol)
+    length_unit == :fm && return (myxlabel, myylabel, myzlabel)
+    length_unit == :lattice && return lattice_unit_labels
+    throw(ArgumentError("unsupported length_unit: $length_unit"))
+end
 const r_0 = CURRENT_R0_FM
 
 # hep-lat/9806005
@@ -316,17 +312,18 @@ function animation_axis_tick_spec(N::Integer, a::Real; show_axis_labels::Bool)
 end
 
 function animation_axis_kwargs(display_setup, theme_settings, camera;
-    a, lattice_size, movie_title, show_axis_labels::Bool)
+    a, lattice_size, movie_title, show_axis_labels::Bool, length_unit::Symbol=:fm)
 
     NX, NY, NZ = lattice_size
     x_ticks = animation_axis_tick_spec(NX, a; show_axis_labels=show_axis_labels)
     y_ticks = animation_axis_tick_spec(NY, a; show_axis_labels=show_axis_labels)
     z_ticks = animation_axis_tick_spec(NZ, a; show_axis_labels=show_axis_labels)
     axis_aspect = display_setup.render_kind == :mesh ? :data : CURRENT_ASPECT
+    xlabel, ylabel, zlabel = axis_labels(length_unit)
     axis_kwargs = Dict{Symbol,Any}(
-        :xlabel => show_axis_labels ? myxlabel : "",
-        :ylabel => show_axis_labels ? myylabel : "",
-        :zlabel => show_axis_labels ? myzlabel : "",
+        :xlabel => show_axis_labels ? xlabel : "",
+        :ylabel => show_axis_labels ? ylabel : "",
+        :zlabel => show_axis_labels ? zlabel : "",
         :title => movie_title,
         :xticks => (x_ticks.positions, x_ticks.labels),
         :yticks => (y_ticks.positions, y_ticks.labels),
@@ -366,7 +363,8 @@ function animation_spatial_coordinates(a::Real, lattice_size)
 end
 
 function initialize_animation_scene(display_setup, theme_settings, camera;
-    a, lattice_size, movie_title, figure_size, show_axis_labels::Bool)
+    a, lattice_size, movie_title, figure_size, show_axis_labels::Bool,
+    length_unit::Symbol=:fm)
 
     coordinates = animation_spatial_coordinates(a, lattice_size)
     fig = Figure(size=figure_size, backgroundcolor=theme_settings.figure_background)
@@ -374,7 +372,8 @@ function initialize_animation_scene(display_setup, theme_settings, camera;
         a=a,
         lattice_size=lattice_size,
         movie_title=movie_title,
-        show_axis_labels=show_axis_labels)
+        show_axis_labels=show_axis_labels,
+        length_unit=length_unit)
     ax = Axis3(fig[1, 1]; axis_kwargs...)
     limits!(ax, coordinates.axis_limits...)
     return (
@@ -471,22 +470,12 @@ function animation_display_setup_for_gaugefield(U, NX, NY, NZ, NT, NC;
     )
 end
 
-function initialize_animation_gaugefield(NX, NY, NZ, NT, NC;
-    nwing=CURRENT_NWING,
-    condition=CURRENT_GENERATION_INITIAL_CONDITION)
-
-    return Initialize_Gaugefields(NC, nwing, NX, NY, NZ, NT; condition=condition)
+function initialize_animation_gaugefield(NX, NY, NZ, NT, NC; start=:cold)
+    return gauge_configuration((NX, NY, NZ, NT); colors=NC, start=start)
 end
 
-function load_animation_gaugefield(filename, NX, NY, NZ, NT, NC;
-    nwing=CURRENT_NWING,
-    condition=CURRENT_GENERATION_INITIAL_CONDITION)
-
-    U = initialize_animation_gaugefield(NX, NY, NZ, NT, NC;
-        nwing=nwing, condition=condition)
-    ildg = ILDG(filename)
-    load_gaugefield!(U, 1, ildg, [NX, NY, NZ, NT], NC)
-    return U
+function load_animation_gaugefield(filename, NX, NY, NZ, NT, NC)
+    return load_gauge(filename; lattice=(NX, NY, NZ, NT), colors=NC)
 end
 
 function animation_metadata_for_render(; videoname, metadata_filename, filename,
@@ -563,14 +552,11 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
     show_render_progress=CURRENT_SHOW_RENDER_PROGRESS,
     show_axis_labels=CURRENT_SHOW_AXIS_LABELS)
 
-    #function create_animation(NX, NY, NZ, NT, NC; beta=6.1, filename="conf_00000100.ildg")
     a = calculate_a(beta)
-    scale_factor = a
-
     U1 = load_animation_gaugefield(filename, NX, NY, NZ, NT, NC)
-    display_result = animation_display_setup_for_gaugefield(U1, NX, NY, NZ, NT, NC;
-        level_target=level_target,
-        render_style=render_style,
+    effective_render_style = something(render_style,
+        default_render_style_for_level_target(level_target))
+    legacy = legacy_field_and_style(U1, level_target, effective_render_style;
         raw_high_level_quantiles=raw_high_level_quantiles,
         raw_high_color_quantiles=raw_high_color_quantiles,
         topological_level_quantiles=topological_level_quantiles,
@@ -578,18 +564,9 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         topological_style_preset=topological_style_preset,
         render_alpha=render_alpha,
         render_transparency=render_transparency)
-    display_setup = display_result.display_setup
-    effective_render_style = display_result.render_style
-    plaqs_t = display_setup.display_field
-    effective_theme = effective_render_theme(effective_render_style, render_theme)
-    theme_settings = render_theme_settings(effective_theme)
-
-    # show logarithm of histogram for plaquettes
-    level_summary = display_setup.level_summary
-    print_legacy_level_summary(level_summary)
-    levels = display_setup.levels
-    movie_title = display_setup.title
-    camera = camera_settings(display_setup.render_kind;
+    setup = display_setup(legacy.style, legacy.field.data)
+    print_legacy_level_summary(setup.level_summary)
+    camera = camera_settings(setup.render_kind;
         camera_motion=camera_motion,
         camera_azimuth=camera_azimuth,
         camera_elevation=camera_elevation,
@@ -597,84 +574,72 @@ function create_animation(NX, NY, NZ, NT, NC, videoname;
         camera_orbit_seconds=camera_orbit_seconds,
         camera_perspectiveness=camera_perspectiveness,
         camera_viewmode=camera_viewmode)
-    render_plan = animation_render_plan(NT, display_setup, camera;
-        framerate=framerate,
-        nloops=nloops,
+    return render_field_movie(legacy.field, videoname;
+        setup=setup,
+        render_style=effective_render_style,
+        camera=camera,
+        a=a,
+        length_unit=:fm,
+        title=setup.title,
         frame_mode=frame_mode,
         fixed_slice4=fixed_slice4,
         slice_hold_frames=slice_hold_frames,
+        nloops=nloops,
+        framerate=framerate,
+        render_theme=render_theme,
         cache_render_slices=cache_render_slices,
         figure_size=figure_size,
         show_render_progress=show_render_progress,
-        show_axis_labels=show_axis_labels)
-    effective_figure_size = render_plan.figure_size
-    effective_show_axis_labels = render_plan.show_axis_labels
-    cache_active = render_plan.cache_active
-
-    #= To check iso-level, please use here
-    hist_p = histogram(vec(plaqs_t))
-    vline!(hist_p, levels)
-    display(hist_p)
-    =#
-
-    scene = initialize_animation_scene(display_setup, theme_settings, camera;
-        a=a,
-        lattice_size=(NX, NY, NZ),
-        movie_title=movie_title,
-        figure_size=effective_figure_size,
-        show_axis_labels=effective_show_axis_labels)
-    fig = scene.fig
-    ax = scene.ax
-
-    draw_context = animation_draw_context()
-    plot_obj = draw_context.plot_obj
-    current_slice4 = draw_context.current_slice4
-    mesh_cache = draw_context.mesh_cache
-
-    if display_setup.render_kind == :contour
-        dummy_data = zeros(Float64, NX, NY, NZ)
-        plot_obj[] = contour_plot_group!(ax, dummy_data, [levels[1]],
-            display_setup.contour_style;
-            x_physical=scene.x_physical,
-            y_physical=scene.y_physical,
-            z_physical=scene.z_physical)
-    end
-
-    function draw_slice!(slice4)
-        delete_plot_obj!(ax, plot_obj[])
-
-        plaqs = @view plaqs_t[:, :, :, slice4]
-        ax.title = movie_title
-        plot_obj[] = plot_animation_slice!(ax, plaqs, display_setup, levels;
-            a=a,
-            lattice_size=(NX, NY, NZ),
-            x_physical=scene.x_physical,
-            y_physical=scene.y_physical,
-            z_physical=scene.z_physical,
-            mesh_cache=cache_active ? mesh_cache : nothing,
-            slice4=slice4)
-        limits!(ax, scene.axis_limits...)
-        current_slice4[] = slice4
-        return nothing
-    end
-
-    record_animation_frames!(fig, ax, videoname, NT, camera, draw_slice!, current_slice4,
-        render_plan)
-
-    metadata = animation_metadata_for_render(
-        videoname=videoname,
+        show_axis_labels=show_axis_labels,
         metadata_filename=metadata_filename,
-        filename=filename,
-        lattice_size=(NX, NY, NZ, NT),
-        nc=NC,
-        beta=beta,
-        flow_steps=flow_steps_in,
-        display_setup=display_setup,
-        render_theme=effective_theme,
-        render_plan=render_plan,
-        camera=camera,
-        mesh_cache=mesh_cache)
-    return finalize_animation_output(videoname, metadata_filename, metadata)
+        source=Dict{String,Any}(
+            "filename" => filename,
+            "nc" => NC,
+            "beta" => beta,
+            "flow_steps" => flow_steps_in,
+        ))
+end
+
+# Map the level_target / render_style arguments of create_animation to an
+# operator and a style of the LatticeField API.
+function legacy_field_and_style(U, level_target::Symbol, render_style::Symbol;
+    raw_high_level_quantiles=nothing,
+    raw_high_color_quantiles=nothing,
+    topological_level_quantiles=nothing,
+    topological_color_quantile=nothing,
+    topological_style_preset=CURRENT_TOPOLOGICAL_CHARGE_STYLE_PRESET,
+    render_alpha=nothing,
+    render_transparency=nothing)
+
+    if level_target == LEVEL_TARGET_ACTION_DENSITY_HIGH
+        render_style == RENDER_STYLE_ACTION_DENSITY_BLOB ||
+            throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_ACTION_DENSITY_BLOB"))
+        return (field=measure(ActionDensity(), U), style=Blob())
+    elseif level_target == LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY
+        kwargs = (preset=topological_style_preset,
+            level_quantiles=topological_level_quantiles,
+            color_quantile=topological_color_quantile,
+            alpha=render_alpha,
+            transparency=render_transparency)
+        style = render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME ? SignedVolume(; kwargs...) :
+                render_style == RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED ? SignedContour(; kwargs...) :
+                throw(ArgumentError("level_target=$level_target requires render_style=$RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED or $RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME"))
+        return (field=measure(TopologicalChargeDensity(), U), style=style)
+    elseif level_target == LEVEL_TARGET_LEGACY_NEGLOG_HIGH
+        render_style == RENDER_STYLE_CURRENT ||
+            throw(ArgumentError("render_style=$render_style requires level_target raw_high"))
+        return (field=measure(PlaquetteDensity(1, 2), U), style=LogIsosurface())
+    elseif level_target == LEVEL_TARGET_RAW_HIGH
+        render_style in (RENDER_STYLE_CURRENT, RENDER_STYLE_PLAQUETTE_THERMAL) ||
+            throw(ArgumentError("unsupported render_style: $render_style"))
+        style = RawIsosurface(thermal=render_style == RENDER_STYLE_PLAQUETTE_THERMAL,
+            level_quantiles=raw_high_level_quantiles,
+            color_quantiles=raw_high_color_quantiles,
+            alpha=render_alpha,
+            transparency=render_transparency)
+        return (field=measure(PlaquetteDensity(1, 2), U), style=style)
+    end
+    throw(ArgumentError("unsupported level_target: $level_target"))
 end
 
 export create_animation

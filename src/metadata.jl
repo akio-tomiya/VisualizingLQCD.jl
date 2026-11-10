@@ -159,7 +159,7 @@ function animation_metadata(;
             "screen_time_label" => false,
         ),
         "configuration" => Dict(
-            "filename" => String(filename),
+            "filename" => filename === nothing ? nothing : String(filename),
             "lattice_size" => collect(lattice_size),
             "nc" => nc,
             "beta" => beta,

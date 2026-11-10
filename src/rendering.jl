@@ -751,10 +751,12 @@ end
 function local_color_value(data, x, y, z;
     radius=CURRENT_ACTION_DENSITY_COLOR_RADIUS,
     stat=CURRENT_ACTION_DENSITY_COLOR_STAT,
-    top_fraction=CURRENT_ACTION_DENSITY_COLOR_TOP_FRACTION)
+    top_fraction=CURRENT_ACTION_DENSITY_COLOR_TOP_FRACTION,
+    buffer=Float64[])
 
+    stat == :sample && return Float64(data[x, y, z])
     nx, ny, nz = size(data)
-    values = Float64[]
+    values = empty!(buffer)
     for zz in max(1, z - radius):min(nz, z + radius),
         yy in max(1, y - radius):min(ny, y + radius),
         xx in max(1, x - radius):min(nx, x + radius)
@@ -762,15 +764,42 @@ function local_color_value(data, x, y, z;
     end
     if stat == :max
         return maximum(values)
-    elseif stat == :sample
-        return data[x, y, z]
     elseif stat == :topmean
-        sort!(values)
-        n = max(1, round(Int, length(values) * top_fraction))
-        return mean(@view values[(end - n + 1):end])
+        # Only the top n entries are needed. partialsort! leaves them in
+        # ascending order, so the mean is summed in the same order as a full sort.
+        len = length(values)
+        n = max(1, round(Int, len * top_fraction))
+        partialsort!(values, (len - n + 1):len)
+        return mean(@view values[(len - n + 1):len])
     else
         throw(ArgumentError("unsupported local color statistic: $stat"))
     end
+end
+
+# Owner colors of all filled voxels, computed in parallel. The mesh assembly
+# below stays sequential, so vertex and face order do not depend on threads.
+function filled_voxel_colors(data, mask; radius, stat, top_fraction, qmin, qmax,
+    palette, gamma)
+
+    filled = findall(mask)
+    colors = Array{Vec3f}(undef, size(mask))
+    nchunks = max(1, min(length(filled), 4 * Threads.nthreads()))
+    chunks = Iterators.partition(eachindex(filled), cld(length(filled), nchunks))
+    tasks = map(chunks) do chunk
+        Threads.@spawn begin
+            buffer = Float64[]
+            sizehint!(buffer, (2 * radius + 1)^3)
+            for i in chunk
+                x, y, z = Tuple(filled[i])
+                value = local_color_value(data, x, y, z;
+                    radius=radius, stat=stat, top_fraction=top_fraction, buffer=buffer)
+                colors[x, y, z] = scalar_field_mesh_color(value;
+                    qmin=qmin, qmax=qmax, palette=palette, gamma=gamma)
+            end
+        end
+    end
+    foreach(wait, tasks)
+    return colors
 end
 
 function boundary_position(b, factor, a, nbase)
@@ -798,13 +827,9 @@ function build_action_density_blob_mesh(data; base_level, color_range,
     vertex_index = Dict{Tuple{Int,Int,Int},Int}()
     faces = Makie.GeometryBasics.TriangleFace{Int}[]
     qmin, qmax = color_range
-
-    function owner_color(x, y, z)
-        value = local_color_value(data, x, y, z;
-            radius=color_radius, stat=color_stat, top_fraction=top_fraction)
-        return scalar_field_mesh_color(value;
-            qmin=qmin, qmax=qmax, palette=palette, gamma=gamma)
-    end
+    owner_colors = filled_voxel_colors(data, mask;
+        radius=color_radius, stat=color_stat, top_fraction=top_fraction,
+        qmin=qmin, qmax=qmax, palette=palette, gamma=gamma)
 
     function add_vertex!(key, color)
         if haskey(vertex_index, key)
@@ -841,7 +866,7 @@ function build_action_density_blob_mesh(data; base_level, color_range,
 
     for z in 1:sz, y in 1:sy, x in 1:sx
         mask[x, y, z] || continue
-        c = owner_color(x, y, z)
+        c = owner_colors[x, y, z]
         x0, x1 = x - 1, x
         y0, y1 = y - 1, y
         z0, z1 = z - 1, z
@@ -1057,7 +1082,7 @@ end
 
 function action_density_blob_plot!(ax, geometry)
     return mesh!(ax, geometry.mesh; color=geometry.colors,
-        shading=FastShading, transparency=false), geometry.info
+        shading=true, transparency=false), geometry.info
 end
 
 function action_density_blob_plot!(ax, data, setup; a, lattice_size)
@@ -1139,11 +1164,11 @@ function topological_charge_volume_plot!(ax, geometry)
     objects = Any[]
     if geometry.positive !== nothing
         push!(objects, mesh!(ax, geometry.positive.mesh; color=geometry.positive.colors,
-            shading=FastShading, transparency=geometry.transparency))
+            shading=true, transparency=geometry.transparency))
     end
     if geometry.negative !== nothing
         push!(objects, mesh!(ax, geometry.negative.mesh; color=geometry.negative.colors,
-            shading=FastShading, transparency=geometry.transparency))
+            shading=true, transparency=geometry.transparency))
     end
     return objects, geometry.info
 end

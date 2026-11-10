@@ -1,5 +1,6 @@
 using VisualizingLQCD
 using Gaugefields
+using QCDMeasurements
 using LinearAlgebra
 using Test
 using Wilsonloop
@@ -179,7 +180,7 @@ end
     azimuths = [VisualizingLQCD.camera_azimuth_for_frame(
                     orbit_camera, frame, total_frames) for frame in 1:total_frames]
     frame_step = 2pi / total_frames
-    @test all(diff(azimuths) .≈ frame_step)
+    @test all(Base.diff(azimuths) .≈ frame_step)
     @test azimuths[1] + 2pi - azimuths[end] ≈ frame_step
 end
 
@@ -324,8 +325,7 @@ end
     @test length(initialized_u) == 4
     @test initialized_u[1].NC == 3
     @test initialized_u[1].NV == 16
-    setup_u = VisualizingLQCD.Initialize_Gaugefields(
-        3, 0, 2, 2, 2, 2; condition=VisualizingLQCD.CURRENT_GENERATION_INITIAL_CONDITION)
+    setup_u = gauge_configuration((2, 2, 2, 2); colors=3, start=:cold)
     action_display_result = VisualizingLQCD.animation_display_setup_for_gaugefield(
         setup_u, 2, 2, 2, 2, 3;
         level_target=VisualizingLQCD.LEVEL_TARGET_ACTION_DENSITY_HIGH)
@@ -655,19 +655,18 @@ end
     @test VisualizingLQCD.CURRENT_TOPOLOGICAL_CHARGE_METHOD ==
           VisualizingLQCD.TOPOLOGICAL_CHARGE_METHOD_CLOVER
     @test VisualizingLQCD.validate_topological_charge_method(:clover) == :clover
-    @test_throws ArgumentError VisualizingLQCD.validate_topological_charge_method(:plaquette)
-    @test VisualizingLQCD.validate_topological_temp_count(5) == 5
-    @test_throws ArgumentError VisualizingLQCD.validate_topological_temp_count(4)
+    for method in (:plaquette, :clover, :alexandrou, :bilson_thompson)
+        @test VisualizingLQCD.validate_topological_charge_method(method) == method
+    end
+    @test VisualizingLQCD.validate_topological_charge_method(:improved) == :alexandrou
+    @test_throws ArgumentError VisualizingLQCD.validate_topological_charge_method(:rect)
 
     @test VisualizingLQCD.topological_epsilon4(1, 2, 3, 4) == 1
     @test VisualizingLQCD.topological_epsilon4(1, 2, 4, 3) == -1
     @test VisualizingLQCD.topological_epsilon4(1, 1, 2, 3) == 0
     @test_throws ArgumentError VisualizingLQCD.topological_epsilon4(0, 1, 2, 3)
 
-    loops, loop_count = VisualizingLQCD.topological_loopset(:clover)
-    @test loop_count == 4
-    @test length(loops[1, 2]) == 4
-    @test isempty(loops[1, 1])
+    @test length(VisualizingLQCD.topological_epsilon_terms()) == 24
 
     metadata = VisualizingLQCD.topological_charge_density_observable_metadata()
     @test metadata["kind"] == "topological_charge_density"
@@ -676,8 +675,7 @@ end
     @test metadata["positive_negative_density"] == true
 
     NX, NY, NZ, NT, NC = 2, 2, 2, 2, 3
-    U = VisualizingLQCD.Initialize_Gaugefields(
-        NC, 0, NX, NY, NZ, NT; condition=VisualizingLQCD.CURRENT_GENERATION_INITIAL_CONDITION)
+    U = gauge_configuration((NX, NY, NZ, NT); colors=NC, start=:cold)
     density = VisualizingLQCD.topological_charge_density(U, NX, NY, NZ, NT, NC)
     @test size(density) == (NX, NY, NZ, NT)
     @test maximum(abs.(density)) ≈ 0.0 atol = 1e-12
@@ -704,6 +702,20 @@ end
     reference_charge = reference_clover_topological_charge(instanton_u)
     @test density_charge ≈ reference_charge atol = 1e-10
     @test abs(density_charge) > 0.5
+
+    # The per-site densities must sum to the charges of QCDMeasurements.
+    measurement = Topological_charge_measurement(instanton_u;
+        TC_methods=["plaquette", "clover"],
+        improved_topological_charge_definition="both")
+    measured = QCDMeasurements.measure(measurement, instanton_u).value
+    for (method, key) in ((:plaquette, "plaquette"), (:clover, "clover"),
+        (:improved, "clover improved"),
+        (:bilson_thompson, "clover improved bilson-thompson"))
+        method_density = VisualizingLQCD.topological_charge_density(
+            instanton_u, instanton_lattice, instanton_lattice, instanton_lattice,
+            instanton_lattice, instanton_nc; method=method)
+        @test sum(method_density) ≈ measured[key] rtol = 1e-10
+    end
     topological_display_result = VisualizingLQCD.animation_display_setup_for_gaugefield(
         instanton_u,
         instanton_lattice,
@@ -720,6 +732,178 @@ end
           :topological_charge_volume
     @test size(topological_display_result.display_setup.display_field) ==
           size(instanton_density)
+end
+
+@testset "LatticeField and operators" begin
+    L = (4, 4, 4, 4)
+    NC = 3
+    U = gauge_configuration(L; colors=NC, start=:hot, seed=11)
+
+    # Built-in operators wrap the existing observables without changing values.
+    action = measure(ActionDensity(), U)
+    @test action isa LatticeField
+    @test size(action) == L
+    @test action.name == "action_density"
+    @test !action.signed
+    # E = 2 sum_{mu<nu} Re tr(1 - U_munu) = 2 Nc * 6 * (mean over planes of 1 - Re tr U / Nc)
+    @test action.data ≈ (2 * NC * 6) .* VisualizingLQCD.local_action_density(U, L..., NC) rtol = 1e-12
+    @test action.info["source"] == "QCDMeasurements.action_density"
+    @test measure(ActionDensity(method=:clover), U).info["method"] == "clover"
+    @test_throws ArgumentError ActionDensity(method=:rect)
+    @test size(slice(action, 2)) == L[1:3]
+    @test slice(action, 2) == action.data[:, :, :, 2]
+
+    plaquette = measure(PlaquetteDensity(1, 2), U)
+    @test plaquette.data == VisualizingLQCD.plaquette_plane_deviation(U, L..., NC; plane=(1, 2))
+
+    q = measure(TopologicalChargeDensity(), U)
+    @test q.signed
+    @test q.info["method"] == "clover"
+    @test q.data == VisualizingLQCD.topological_charge_density(U, L..., NC)
+    @test q.data == QCDMeasurements.topological_charge_density(U; method="clover")
+    @test_throws ArgumentError TopologicalChargeDensity(method=:rect)
+
+    # The three user-defined entry points reproduce the built-in definitions.
+    loop_plaquette = measure(LoopDensity([(1, +1), (2, +1), (1, -1), (2, -1)];
+        name="my_plaquette", signed=false) do W
+        1 - real(tr(W)) / size(W, 1)
+    end, U)
+    @test loop_plaquette.name == "my_plaquette"
+    @test loop_plaquette.data ≈ plaquette.data atol = 1e-14
+    @test_throws ArgumentError LoopDensity(W -> 0.0, [(1, +1), (2, +1)])
+
+    site_plaquette = measure(SiteOperator() do ctx, x
+        U1 = link(ctx, 1, x)
+        U2 = link(ctx, 2, neighbor(ctx, x, 1))
+        U3 = link(ctx, 1, neighbor(ctx, x, 2))
+        U4 = link(ctx, 2, x)
+        1 - real(tr(U1 * U2 * U3' * U4')) / 3
+    end, U)
+    @test site_plaquette.data ≈ plaquette.data atol = 1e-14
+
+    clover_q = measure(FieldStrengthDensity() do F
+        -sum(VisualizingLQCD.topological_epsilon4(m, n, r, s) * real(tr(F[m, n] * F[r, s]))
+             for m in 1:4, n in 1:4, r in 1:4, s in 1:4) / (32 * pi^2)
+    end, U)
+    @test clover_q.data ≈ q.data atol = 1e-14
+    @test sum(clover_q) ≈ sum(q) atol = 1e-12
+end
+
+@testset "Rendering API contracts" begin
+    V = VisualizingLQCD
+    L = (4, 4, 4, 4)
+    U = gauge_configuration(L; colors=3, start=:hot, seed=12)
+    action = measure(ActionDensity(), U)
+    q = measure(TopologicalChargeDensity(), U)
+
+    @test V.default_style(action) isa Blob
+    @test V.default_style(q) isa SignedVolume
+    @test V.render_style_symbol(Blob()) == V.RENDER_STYLE_ACTION_DENSITY_BLOB
+    @test V.render_style_symbol(SignedContour()) == V.RENDER_STYLE_TOPOLOGICAL_CHARGE_SIGNED
+    @test V.render_style_symbol(RawIsosurface(thermal=true)) == V.RENDER_STYLE_PLAQUETTE_THERMAL
+    @test V.render_style_symbol(LogIsosurface()) == V.RENDER_STYLE_CURRENT
+
+    # Each style reuses the existing display setup unchanged.
+    @test V.display_setup(Blob(), action.data).levels ==
+          V.action_density_blob_display_setup(action.data).levels
+    @test V.display_setup(SignedVolume(), q.data).render_kind == :mesh
+    @test V.display_setup(SignedContour(), q.data).render_kind == :contour
+    @test V.display_setup(SignedContour(preset=:core), q.data).levels ==
+          V.topological_charge_display_level_setup(q.data; style_preset=:core).levels
+    plaquette = measure(PlaquetteDensity(1, 2), U)
+    @test V.display_setup(LogIsosurface(), plaquette.data).levels ==
+          V.plaquette_display_level_setup(plaquette.data).levels
+
+    @test V.frame_arguments(SliceSweep()).frame_mode == V.FRAME_MODE_SEQUENCE
+    @test V.frame_arguments(SliceSweep(hold=3)).slice_hold_frames == 3
+    @test V.frame_arguments(FixedSlice(2)).frame_mode == V.FRAME_MODE_FIXED
+    @test V.frame_arguments(FixedSlice(2)).fixed_slice4 == 2
+    @test V.camera_settings(:mesh, Orbit(turns=2.0)).motion == V.CAMERA_MOTION_ORBIT
+    @test V.camera_settings(:mesh, Orbit(turns=2.0)).orbit_turns == 2.0
+    @test V.camera_settings(:contour, StaticCamera()).azimuth === nothing
+
+    @test V.resolve_spacing(nothing, nothing) == (a=1.0, length_unit=:lattice)
+    @test V.resolve_spacing(0.1, nothing) == (a=0.1, length_unit=:fm)
+    @test V.resolve_spacing(nothing, 6.0).a ≈ V.calculate_a(6.0)
+    @test V.axis_labels(:fm) == (V.myxlabel, V.myylabel, V.myzlabel)
+    @test_throws ArgumentError V.axis_labels(:inch)
+
+    @test V.default_title(action, V.display_setup(Blob(), action.data)) ==
+          V.ACTION_DENSITY_BLOB_MOVIE_TITLE
+    my_field = LatticeField(action.data; name="my_loop_density")
+    @test V.default_title(my_field, V.display_setup(Blob(), my_field.data)) == "My loop density"
+
+    legacy = V.legacy_field_and_style(U, V.LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY,
+        V.RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME; topological_style_preset=:wide)
+    @test legacy.style isa SignedVolume
+    @test legacy.style.preset == :wide
+    @test legacy.field.data == q.data
+    @test V.legacy_field_and_style(U, V.LEVEL_TARGET_RAW_HIGH,
+        V.RENDER_STYLE_PLAQUETTE_THERMAL).style.thermal
+    @test_throws ArgumentError V.legacy_field_and_style(U,
+        V.LEVEL_TARGET_ACTION_DENSITY_HIGH, V.RENDER_STYLE_CURRENT)
+    @test_throws ArgumentError V.legacy_field_and_style(U, :unknown, V.RENDER_STYLE_CURRENT)
+end
+
+@testset "Gradient-flow series contracts" begin
+    V = VisualizingLQCD
+    L = (4, 4, 4, 4)
+    U = gauge_configuration(L; colors=3, start=:hot, seed=13)
+    before = measure(ActionDensity(), U)
+    series = flow_series(U, ActionDensity(); steps=[0, 1, 3], step_size=0.02)
+    @test length(series) == 3
+    @test series.flow_times ≈ [0.0, 0.02, 0.06]
+    @test size(series) == L
+    @test series[1].data == before.data
+    @test measure(ActionDensity(), U).data == before.data   # U is not modified
+    @test sum(series[3]) < sum(series[1])                   # the flow smooths the field
+    @test series.info["steps"] == [0, 1, 3]
+    @test_throws ArgumentError flow_series(U, ActionDensity(); steps=[2, 1])
+    @test_throws ArgumentError flow_series(U, ActionDensity(); steps=Int[])
+
+    manual = FieldSeries([series[1], series[2]], [0.0, 0.02])
+    @test manual.name == "action_density"
+    @test_throws ArgumentError FieldSeries([series[1]], [0.0, 1.0])
+    @test_throws ArgumentError FieldSeries([series[2], series[1]], [0.02, 0.0])
+
+    per_frame = V.flow_display_setups(Blob(), series, :per_frame)
+    first_levels = V.flow_display_setups(Blob(), series, :first)
+    @test per_frame[3].levels != per_frame[1].levels
+    @test all(s.levels == per_frame[1].levels for s in first_levels)
+    @test first_levels[3].display_field == per_frame[3].display_field
+    @test_throws ArgumentError V.flow_display_setups(Blob(), series, :middle)
+    @test V.flow_progress_fraction(series, 1) == 0.0
+    @test V.flow_progress_fraction(series, 3) == 1.0
+    @test occursin("x4=2", V.flow_time_label(series, 2, 2))
+end
+
+@testset "Loading flow series from JLD2" begin
+    dir = mktempdir()
+    L = (2, 2, 2, 3)
+    q0, q1, q2 = fill(0.0, L), fill(1.0, L), fill(4.0, L)
+    VisualizingLQCD.JLD2.jldsave(joinpath(dir, "b.jld2"); q=q1, metadata=(tau=1.0,))
+    VisualizingLQCD.JLD2.jldsave(joinpath(dir, "density_tau_0p0.jld2"); q=q0)
+    VisualizingLQCD.JLD2.jldsave(joinpath(dir, "c.jld2"); q=reshape(q2, 1, L...),
+        metadata=Dict("tau" => 3.0))
+    series = load_field_series(dir)
+    @test series.flow_times == [0.0, 1.0, 3.0]
+    @test series[2].data == q1
+    @test series[3].data == q2
+    @test series[1].signed
+    @test series.name == "topological_charge_density"
+    @test length(series.info["files"]) == 3
+
+    picked = load_field_series(dir; flow_times=[3.0, 0.0])
+    @test picked.flow_times == [0.0, 3.0]
+    @test_throws ArgumentError load_field_series(dir; flow_times=[2.0])
+    @test_throws ArgumentError load_field_series(joinpath(dir, "missing"))
+
+    sorted = load_field_series(dir; flow_times=[0.0, 3.0])
+    fine = resample(sorted, [0.0, 1.5, 3.0])
+    @test fine.flow_times == [0.0, 1.5, 3.0]
+    @test fine[2].data ≈ fill(2.0, L)
+    @test fine[1].data == q0
+    @test_throws ArgumentError resample(sorted, [4.0])
 end
 
 @testset "SU(2) instanton density fixture contracts" begin
@@ -814,21 +998,13 @@ end
     @test occursin("width=\"300\"", readme_text)
     @test occursin("`128` frames", readme_text)
     @test occursin("show_axis_labels=false", readme_text)
-    @test occursin("LEVEL_TARGET_TOPOLOGICAL_CHARGE_DENSITY", readme_text)
-    @test occursin("RENDER_STYLE_TOPOLOGICAL_CHARGE_VOLUME", readme_text)
-    @test occursin("`abs(q)`", readme_text)
-    @test occursin("render_topological_density_config_movie.jl", readme_text)
-    @test occursin("--output-name $(SAMPLE_BASENAME).mp4", readme_text)
-    @test occursin("--show-axis-labels false", readme_text)
-    @test occursin("$(SAMPLE_BASENAME).mp4.metadata.json", readme_text)
-    @test !occursin("plaquette_3D_contour_animation32323264beta6.0-gf05hb40flow200-fullturn",
-        readme_text)
+    @test occursin("movie(\"$(SAMPLE_BASENAME).mp4\"", readme_text)
+    @test occursin("camera=Orbit(turns=1), frames=SliceSweep(loops=4)", readme_text)
     @test occursin("q0.940", topology_readme_text)
     @test occursin("--show-render-progress true", topology_readme_text)
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).mp4"))
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).mp4.metadata.json"))
     @test isfile(joinpath(root, "$(SAMPLE_BASENAME).gif"))
-    @test isfile(joinpath(root, "test", "$(SAMPLE_BASENAME).gif"))
 
     @test occursin("\"lattice_size\": [24, 24, 24, 32]", sample_metadata_text)
     @test occursin("\"level_target\": \"topological_charge_density\"",
